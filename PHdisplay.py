@@ -34,19 +34,106 @@ import sys
 
 
 import PHdbOperations as PHdb
-import PHlogic as PHlo
 import Tkinter as tk
 import ttk
 
-print PHdb.__file__
-print PHlo.__file__
+# print PHdb.__file__
+# print type(PHdb), 'PHdb', dir(PHdb)
 
-print type(PHdb), 'PHdb', dir(PHdb)
-print type(PHlo), 'PHlo', dir(PHlo)
 
 
 #connect to database
 connection,cursor = PHdb.connectDB()
+
+
+################################################################################
+#### LOGIC (the Controller in MVC) (this may need to go below the display sec.)
+################################################################################
+
+### Clear tab function
+
+def clear_frame(tab_frame):
+    fields = tab_frame.winfo_children()
+    [field.delete(0,'end') for field in fields\
+     if field.winfo_class() == "Entry"]
+
+### Company tab logic-------------------------------------------------------
+
+def company_save():
+    """called when the save button is pressed on the company tab"""
+    company = PHdb.Company()
+    company.name = company_name_field.get()
+    company.address = company_address_field.get()
+    company.city = company_city_field.get()
+    company.state = company_state_field.get()
+    company.phone = company_phone_field.get()
+    company.write()
+
+def company_selected(name,frame):
+
+    #for field in company_fields:
+    #    field.delete(0,'end')
+
+    clear_frame(frame)
+        
+    company = PHdb.getCompanyByName(name)
+    print 'company type', type(company)
+    company_name_field.insert(0,name)
+    company_address_field.insert(0,company.address)
+    company_city_field.insert(0,company.city)
+    company_state_field.insert(0,company.state)
+    company_phone_field.insert(0,company.phone)
+    company_notes_field.insert(0,company.notes)
+    
+
+    
+### Contact tab logic-------------------------------------------------------
+
+def contact_selected(name):
+    #get contact company, update company tab
+    pass
+
+
+def save_contact():
+    pass
+
+    
+def update_contact_tab(**kwargs):
+    #if kwargs['clear?'] == True:
+    pass   
+        
+
+
+### Project tab logic-------------------------------------------------------
+
+def update_project_tab(**kwargs):
+    pass
+
+def project_selected(name):
+    #update company and contact tabs
+    pass
+
+def save_project():
+    pass
+
+
+
+### Session tab logic-------------------------------------------------------
+
+def update_session_tab(**kwaargs):
+    pass
+
+def session_selected(datetime):
+    pass
+
+def new_session():
+    pass
+
+def save_session():
+    pass
+
+
+### Observer
 
 
 
@@ -110,7 +197,7 @@ for item in PHdb.getAllCompanies():
 # this needs a lambda function because it stores the result of the command
 # company_selected defined in PHlogic.py
 company_listbox_button = tk.Button(companyTab, text="Select",
-                                   command = lambda: PHlo.company_selected(
+                                   command = lambda: company_selected(
                                        company_listbox.get(
                                            company_listbox.curselection()[0])
                                            ,companyTab))
