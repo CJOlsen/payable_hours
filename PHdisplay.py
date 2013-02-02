@@ -22,27 +22,18 @@
 ##     PHdbOperations.py ***
 
 
+## ******** TODO
+## ******** company list box on company tab needs to update
+
+
+
 import sys
-
-
-## **** workaround for importing other modules, needs fixing ****
-## 
-##if '**your filepath**/payablehours/' not in sys.path:
-##    print 'adding to sys path'
-##    sys.path.append('**your filepath**/payablehours/')
-
-
-
 import PHdbOperations as PHdb
 import Tkinter as tk
 import ttk
 
-# print PHdb.__file__
-# print type(PHdb), 'PHdb', dir(PHdb)
-
 #connect to database
 connection,cursor = PHdb.connectDB()
-
 
 ################################################################################
 #### LOGIC (the Controller in MVC)
@@ -55,47 +46,11 @@ def clear_frame(tab_frame):
     [field.delete(0,'end') for field in fields\
      if field.winfo_class() == "Entry"]
 
-
-
-
-class Event(object):
-    pass
-
-
-class Observer(object):
-    """ The Observer recieves messages from the notebook tabs and updates the
-        other tabs as needed.
-
-        A dictionary gets passed around with keys: 'company', 'contact',
-        'project', 'sessionID'
-
-        """
-
-    ########################################################################
-    ## **** this has exposed a design flaw, a bit of reworking needed ****##
-    ########################################################################
-    
-    def __init__(self):
-        pass
-
-    def fire(self, dictionary):
-        if dictionary['company'] != 'pass':
-            company_selected(dictionary['company'], companyTab)
-        if dictionary['company'] != 'pass':
-            contact_selected(None)
-        if dictionary['project'] != 'pass':
-            project_selected(None)
-        if dictionary['company'] != 'pass':
-            session_selected(None)
-
-    def inbox(self, *args, **kwargs):
-        pass
-        
-
 ### Company tab logic-------------------------------------------------------
 
-def company_save():
-    """called when the save button is pressed on the company tab"""
+def company_save(frame):
+    """ called when the save button is pressed on the company tab
+        """
     company = PHdb.Company()
     company.name = company_name_field.get()
     company.address = company_address_field.get()
@@ -104,7 +59,16 @@ def company_save():
     company.phone = company_phone_field.get()
     company.write()
 
+    clear_frame(frame)
+
+    # need to check to see if this works on empty list box
+    company_listbox.delete(0,'end')
+    populate_company_listbox()
+    update_contact_tab(company_name=company.name, clear=False)
+
 def company_selected(name,frame):
+    """ called by the select button on the company tab
+        """
     clear_frame(frame)
     company = PHdb.getCompanyByName(name)
 
@@ -119,34 +83,79 @@ def company_selected(name,frame):
         company_phone_field.insert(0,company.phone)
     if company.notes:
         company_notes_field.insert(0,company.notes)
+
+    update_contact_tab(company_name=company.name, clear=False)
+
+def populate_company_listbox():
+    for item in PHdb.getAllCompanies():
+        company_listbox.insert('end',item)
     
 
     
 ### Contact tab logic-------------------------------------------------------
 
-def contact_selected(name):
+def contact_selected(name, frame):
+    """ called by the select button on the contact tab
+        """
+    clear_frame(frame)
     #get contact company, update company tab
     contact = PHdb.getContactByName(name)
+    contact_company_field.insert(0, contact.companyID)
     contact_name_field.insert(0, contact.name)
     contact_phone_field.insert(0, contact.phone)
     contact_email_field.insert(0, contact.email)
     contact_notes_field.insert(0, contact.notes)
 
+    update_project_tab(contact_name=contact.name, clear=False)
 
 def contact_save():
     # create a new contact object and write it to the db
     contact = PHdb.Contact()
+    contact.company_name = contact_company_field.get()
     contact.name = contact_name_field.get()
     contact.phone = contact_phone_field.get()
-    contact.email = contact_email_filed.get()
+    contact.email = contact_email_field.get()
     contact.notes = contact_notes_field.get()
     contact.write()
-    
-def update_contact_tab(**kwargs):
-    #if kwargs['clear?'] == True:
-    pass   
+
+    update_project_tab(contact_name=contact.name, clear=False)
+
+def clear_contact_listbox():
+    contact_listbox.delete(0)
+
+def populate_contact_listbox(**kwargs):
+    """ Populates the contact tab listbox.
+        All calls to this function must supply: a "show_all" key designating
+        whether or not the call is to show all contacts, and if that is false
+        a "company" key to designate which company contacts to load.
+        Returns: Nothing
+
+        """
+    clear_contact_listbox()
+    if kwargs["show_all"] == True:
+        contacts = PHdb.getAllContacts()
+        for contact in PHdb.getAllContacts():
+            contact_listbox.insert('end', contact)
+    else:
+        for contact in PHdb.getContactsForCompany(company):
+            contact_listbox.insert('end', contact)
+        
+        
         
 
+def update_contact_tab(**kwargs):
+    if kwargs['clear'] == True:
+        clear_frame(contactTab)
+    elif kwargs['company_name']:
+        pass
+    elif kwargs['contact_name']:
+        # update project lists for company name
+        pass
+    update_project_tab(clear=True)
+
+def contact_show_all():
+    pass
+        
 
 ### Project tab logic-------------------------------------------------------
 
@@ -163,6 +172,8 @@ def project_selected(name):
     project_projectActive_field(0, project.projectActive)
     project_contactName_field(0, project.contactName)
     project_contactPhone_field(0, project.contactPhone)
+
+    update_session_tab(project_name=project.name, clear=False)
     
 def save_project():
     project = PHdb.Project()
@@ -177,6 +188,8 @@ def save_project():
     project.contactName = project_contactName_field.get()
     project.contactPhone = project_contactPhone_field.get()
     project.write()
+
+    update_session_tab(project_name=project.name, clear=False)
 
 def update_project_tab(**kwargs):
     pass
@@ -251,10 +264,6 @@ company_state_field   = tk.Entry(companyTab,width=5)
 company_phone_field   = tk.Entry(companyTab,width=25)
 company_notes_field   = tk.Entry(companyTab,width=25)
 
-#company_fields = [company_name_field, company_address_field, 
-#                  company_city_field,company_state_field, 
-#                  company_phone_field,company_notes_field]
-
 company_name_label    = tk.Label(companyTab,text="Name")
 company_address_label = tk.Label(companyTab,text="Address")
 company_city_label    = tk.Label(companyTab,text="City")
@@ -262,17 +271,10 @@ company_state_label   = tk.Label(companyTab,text="State")
 company_phone_label   = tk.Label(companyTab,text="Phone")
 company_notes_label   = tk.Label(companyTab,text="Notes")
 
-
-  ## create a listbox
 company_listbox = tk.Listbox(companyTab)
 
-for item in PHdb.getAllCompanies():
-    company_listbox.insert('end',item)
-
-  ## create a button to select from the listbox
-
+# create a button to select from the listbox
 # this needs a lambda function because it stores the result of the command
-# company_selected defined in PHlogic.py
 company_listbox_button = tk.Button(companyTab, text="Select",
                                    command = lambda: company_selected(
                                        company_listbox.get(
@@ -280,7 +282,7 @@ company_listbox_button = tk.Button(companyTab, text="Select",
                                            ,companyTab))
 
 company_save_button = tk.Button(companyTab,text='Save',
-                                command = lambda: company_save())
+                                command = lambda: company_save(companyTab))
 
 company_clear_button = tk.Button(companyTab,text='Clear',
                                  command = lambda: \
@@ -292,16 +294,44 @@ company_clear_button = tk.Button(companyTab,text='Clear',
 #### contact page content -----------------------------------------------------
 
 contact_name_field  = tk.Entry(contactTab,width=20)
+contact_company_field = tk.Entry(contactTab,width=20)
 contact_phone_field = tk.Entry(contactTab,width=20)
 contact_email_field = tk.Entry(contactTab,width=20)
 contact_notes_field = tk.Entry(contactTab,width=20)
 
 contact_name_label  = tk.Label(contactTab,text="Name")
+contact_company_label = tk.Label(contactTab,text="Company")
 contact_phone_label = tk.Label(contactTab,text="Phone")
 contact_email_label = tk.Label(contactTab,text="Email")
 contact_notes_label = tk.Label(contactTab,text="Notes")
 
-# company list box
+# contact list box
+contact_listbox = tk.Listbox(contactTab)
+
+
+for item in PHdb.getAllContacts():
+    contact_listbox.insert('end',item)
+
+
+
+# this needs a lambda function because it stores the result of the command
+contact_listbox_button = tk.Button(contactTab, text="Select",
+                                   command = lambda: contact_selected(
+                                       contact_listbox.get(
+                                           contact_listbox.curselection()[0])
+                                           ,contactTab))
+
+contact_show_all_button = tk.Button(contactTab, text='Show All',
+                                   command = lambda: contact_show_all())
+
+contact_save_button = tk.Button(contactTab,text='Save',
+                                command = lambda: contact_save())
+
+contact_clear_button = tk.Button(contactTab,text='Clear',
+                                 command = lambda: \
+                                 [field.delete(0,'end') for field in\
+                                  contactTab.winfo_children() \
+                                  if field.winfo_class() == 'Entry'])
 
 
 
@@ -404,26 +434,28 @@ company_listbox_button.grid(row=5,column=4)
 company_save_button.grid(row=10,column=1)
 company_clear_button.grid(row=10,column=2)
 
-  ## display the session widgets
-session_startTime_field.grid(row=0,column=1)
-session_stopTime_field.grid(row=1,column=1)
-session_time_field.grid(row=2,column=1)
-
-session_startTime_label.grid(row=0,column=0)
-session_stopTime_label.grid(row=1,column=0)
-session_time_label.grid(row=2,column=0)
-session_notes_label.grid(row=3,column=0)
+populate_company_listbox()
 
   ## display the contact widgets
 contact_name_field.grid(row=0,column=1)
-contact_phone_field.grid(row=1,column=1)
-contact_email_field.grid(row=2,column=1)
-contact_notes_field.grid(row=3,column=1)
+contact_company_field.grid(row=1,column=1)
+contact_phone_field.grid(row=2,column=1)
+contact_email_field.grid(row=3,column=1)
+contact_notes_field.grid(row=4,column=1)
 
 contact_name_label.grid(row=0,column=0)
-contact_phone_label.grid(row=1,column=0)
-contact_email_label.grid(row=2,column=0)
-contact_notes_label.grid(row=3,column=0)
+contact_company_label.grid(row=1, column=0)
+contact_phone_label.grid(row=2,column=0)
+contact_email_label.grid(row=3,column=0)
+contact_notes_label.grid(row=4,column=0)
+
+contact_listbox.grid(column=4,row=0,rowspan=5)
+contact_listbox_button.grid(row=5,column=4)
+contact_show_all_button.grid(row=6, column=4)
+contact_save_button.grid(row=5,column=1)
+contact_clear_button.grid(row=6,column=1)
+
+populate_contact_listbox(show_all=True)
 
   ## display the project widgets
 project_hourlyPay_field.grid(row=0,column=1)
@@ -448,6 +480,16 @@ project_projectActive_label.grid(row=8,column=0)
 project_contactName_label.grid(row=9,column=0)
 project_contactPhone_label.grid(row=10,column=0)
 project_notes_label.grid(row=11,column=0)
+
+  ## display the session widgets
+session_startTime_field.grid(row=0,column=1)
+session_stopTime_field.grid(row=1,column=1)
+session_time_field.grid(row=2,column=1)
+
+session_startTime_label.grid(row=0,column=0)
+session_stopTime_label.grid(row=1,column=0)
+session_time_label.grid(row=2,column=0)
+session_notes_label.grid(row=3,column=0)
 
 
 ## 
