@@ -18,8 +18,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## *** THIS FILE HOLDS THE DISPLAY CODE, FOR MYSQL INTERFACE SEE 
-##     PHdbOperations.py and for program logic see PHlogic.py ***
+## *** THIS FILE HOLDS THE DISPLAY AND LOGIC CODE, FOR MYSQL INTERFACE SEE 
+##     PHdbOperations.py ***
 
 
 import sys
@@ -40,14 +40,12 @@ import ttk
 # print PHdb.__file__
 # print type(PHdb), 'PHdb', dir(PHdb)
 
-
-
 #connect to database
 connection,cursor = PHdb.connectDB()
 
 
 ################################################################################
-#### LOGIC (the Controller in MVC) (this may need to go below the display sec.)
+#### LOGIC (the Controller in MVC)
 ################################################################################
 
 ### Clear tab function
@@ -56,6 +54,43 @@ def clear_frame(tab_frame):
     fields = tab_frame.winfo_children()
     [field.delete(0,'end') for field in fields\
      if field.winfo_class() == "Entry"]
+
+
+
+
+class Event(object):
+    pass
+
+
+class Observer(object):
+    """ The Observer recieves messages from the notebook tabs and updates the
+        other tabs as needed.
+
+        A dictionary gets passed around with keys: 'company', 'contact',
+        'project', 'sessionID'
+
+        """
+
+    ########################################################################
+    ## **** this has exposed a design flaw, a bit of reworking needed ****##
+    ########################################################################
+    
+    def __init__(self):
+        pass
+
+    def fire(self, dictionary):
+        if dictionary['company'] != 'pass':
+            company_selected(dictionary['company'], companyTab)
+        if dictionary['company'] != 'pass':
+            contact_selected(None)
+        if dictionary['project'] != 'pass':
+            project_selected(None)
+        if dictionary['company'] != 'pass':
+            session_selected(None)
+
+    def inbox(self, *args, **kwargs):
+        pass
+        
 
 ### Company tab logic-------------------------------------------------------
 
@@ -70,20 +105,20 @@ def company_save():
     company.write()
 
 def company_selected(name,frame):
-
-    #for field in company_fields:
-    #    field.delete(0,'end')
-
     clear_frame(frame)
-        
     company = PHdb.getCompanyByName(name)
-    print 'company type', type(company)
-    company_name_field.insert(0,name)
-    company_address_field.insert(0,company.address)
-    company_city_field.insert(0,company.city)
-    company_state_field.insert(0,company.state)
-    company_phone_field.insert(0,company.phone)
-    company_notes_field.insert(0,company.notes)
+
+    company_name_field.insert(0,company.name)
+    if company.address:
+        company_address_field.insert(0,company.address)
+    if company.city:
+        company_city_field.insert(0,company.city)
+    if company.state:
+        company_state_field.insert(0,company.state)
+    if company.phone:
+        company_phone_field.insert(0,company.phone)
+    if company.notes:
+        company_notes_field.insert(0,company.notes)
     
 
     
@@ -91,12 +126,21 @@ def company_selected(name,frame):
 
 def contact_selected(name):
     #get contact company, update company tab
-    pass
+    contact = PHdb.getContactByName(name)
+    contact_name_field.insert(0, contact.name)
+    contact_phone_field.insert(0, contact.phone)
+    contact_email_field.insert(0, contact.email)
+    contact_notes_field.insert(0, contact.notes)
 
 
-def save_contact():
-    pass
-
+def contact_save():
+    # create a new contact object and write it to the db
+    contact = PHdb.Contact()
+    contact.name = contact_name_field.get()
+    contact.phone = contact_phone_field.get()
+    contact.email = contact_email_filed.get()
+    contact.notes = contact_notes_field.get()
+    contact.write()
     
 def update_contact_tab(**kwargs):
     #if kwargs['clear?'] == True:
@@ -106,39 +150,72 @@ def update_contact_tab(**kwargs):
 
 ### Project tab logic-------------------------------------------------------
 
-def update_project_tab(**kwargs):
-    pass
-
 def project_selected(name):
     #update company and contact tabs
-    pass
-
+    project = PHdb.getProjectByName(name)
+    project_name_field.insert(0, project.name)
+    project_hourlyPay_field.insert(0, project.hourlyPay)
+    project_workedHours_field.insert(0, project.workedHours)
+    project_billedHours_field.insert(0, project.billedHours)
+    project_totalInvoiced_field.insert(0, project.totalInvoiced)
+    project_totalPaid_field.insert(0, project.totalPaid)
+    project_moneyOwed_field.insert(0, project.moneyOwed)
+    project_projectActive_field(0, project.projectActive)
+    project_contactName_field(0, project.contactName)
+    project_contactPhone_field(0, project.contactPhone)
+    
 def save_project():
-    pass
+    project = PHdb.Project()
+    project.name = project_name_field.get()
+    project.hourlyPay = project_hourlyPay_field.get()
+    project.workedHours = project_workedHours_field.get()
+    project.billedHours = project_billedHours_field.get()
+    project.totalInvoiced = project_totalInvoiced_field.get()
+    project.totalPaid = project_totalPaid_field.get()
+    project.moneyOwed = project_moneyOwed_field.get()
+    project.projectActive = project_projectActive_field.get()
+    project.contactName = project_contactName_field.get()
+    project.contactPhone = project_contactPhone_field.get()
+    project.write()
 
+def update_project_tab(**kwargs):
+    pass
 
 
 ### Session tab logic-------------------------------------------------------
 
-def update_session_tab(**kwaargs):
-    pass
-
 def session_selected(datetime):
-    pass
+    session = PHdb.getSessionBySessionID(sessionID)
+    session_sessionID_field.insert(0, session.sessionID)
+    session_companyID_field.insert(0, session.companyID)
+    session_projectID_field.insert(0, session.projectID)
+    session_startTime_field.insert(0, session.startTime)
+    session_stopTime_field.insert(0, session.stopTime)
+    session_time_field.insert(0, session.time)
+    session_notes_field.insert(0, session.notes)
+
+
+def save_session():
+    session = PHdb.Session()
+    session.sessionID = session_sessionID_field.get()
+    session.companyID = session_companyID_field.get()
+    session.projectID = session_projectID_field.get()
+    session.startTime = session_startTime_field.get()
+    session.stopTime = session_stopTime_field.get()
+    session.time = session_time_field.get()
+    session.notes = session_notes_field.get()
+    session.write()
 
 def new_session():
     pass
 
-def save_session():
+def update_session_tab(**kwaargs):
     pass
-
-
-### Observer
 
 
 
 ################################################################################
-#### BUILD THE DISPLAY
+#### BUILD THE DISPLAY (the V in MVC)
 ################################################################################
 
 
@@ -371,6 +448,7 @@ project_projectActive_label.grid(row=8,column=0)
 project_contactName_label.grid(row=9,column=0)
 project_contactPhone_label.grid(row=10,column=0)
 project_notes_label.grid(row=11,column=0)
+
 
 ## 
 ## This line is so necessary.  Don't remove it.

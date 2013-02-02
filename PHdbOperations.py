@@ -28,6 +28,8 @@ connection = None
 cursor = None
 
 # general database operations
+# these methods are the interface for the database and database objects
+
 def connectDB():
     """ Takes: nothing
         Tries to create a connection to the MySQL database.
@@ -121,8 +123,8 @@ class Company(object):
         self.notes     = notes
 
     # because Python doesn't allow multiple init's it's easier to initialize
-    # a new object in two steps than mangle __init__, but getByName really is
-    # part of the initialization process
+    # a new object in two steps than mangle(?) __init__, but getByName really
+    # is part of the initialization process (conceptually)
     def getByName(self,name):
         """ Takes: a name string (and implied self)
             Queries the database for the company corresponding to the name
