@@ -71,6 +71,13 @@ def getCompanyByName(name):
         """
     company = Company()
     return company.getByName(name)
+
+def getContactByName(name):
+    """ Takes: a name string
+        Returns: a contact object corresponding to the name
+        """
+    contact = Contact()
+    return contact.getByName(name)
     
 def getAllProjects():
     """ Takes: nothing
@@ -106,14 +113,8 @@ def getContactByID():
     
 # objects correspond to relations (this is a simple ORM system)
 class Company(object):
-    def __init__(self, 
-                 companyID =None,
-                 name      =None,
-                 address   =None,
-                 city      =None,
-                 state     =None,
-                 phone     =None,
-                 notes     =None):
+    def __init__(self, companyID =None, name=None, address=None, city=None,
+                 state=None, phone=None, notes=None):
         self.companyID = companyID
         self.name      = name
         self.address   = address
@@ -137,7 +138,6 @@ class Company(object):
         recordDict = cursor.fetchall()[0]
         
         if recordDict:
-            self.companyID = recordDict['id']
             self.name      = recordDict['name']
             self.address   = recordDict['address']
             self.city      = recordDict['city']
@@ -155,52 +155,29 @@ class Company(object):
             Writes all data in the company object to the database, and commits
             Returns: Nothing
             """
-        # this is dangerous, there is no undo
         global cursor
-        names = getAllCompanies()
-        if self.name in names:
-            cursor.execute("SELECT id FROM company WHERE name='%s'"\
-                           % self.name)
-            self.companyID = cursor.fetchone()[0]
-            cursor.execute("REPLACE INTO company (id, name, address, city, state, phone, notes)"\
-                           "VALUES (%s,%s,%s,%s,%s,%s,%s)",\
-                           (self.companyID,self.name,self.address,self.city,\
-                            self.state,self.phone,self.notes))
-        else:
-            cursor.execute("INSERT INTO company (name, address, city, state, phone, notes)"\
-                           "VALUES (%s,%s,%s,%s,%s,%s)",\
-                           (self.name,self.address,self.city,self.state,\
-                            self.phone,self.notes))
+        cursor.execute("REPLACE INTO company "\
+                       "(name, address, city, state, phone, notes)"\
+                        " VALUES (%s,%s,%s,%s,%s,%s)",\
+                        (self.name,self.address,self.city,\
+                        self.state,self.phone,self.notes))
         connection.commit()
 
 class Contact(object):
-    def __init__(self,
-                 name      =None,
-                 contactID =None,
-                 companyID =None,
-                 phone     =None,
-                 email     =None,
-                 notes     =None):
-        self.name      = name
-        self.contactID = contactID
-        self.companyID = companyID
-        self.phone     = phone
-        self.email     = email
-        self.notes     = notes
+    def __init__(self, name=None, company_name=None, phone=None, email=None,
+                 notes=None):
+        self.name = name
+        self.company_name = company_name
+        self.phone = phone
+        self.email = email
+        self.notes = notes
 
     def write(self):
-        print 'write'
-        if self.contactID:
-            cursor.execute("REPLACE INTO contact (%s,%s,%s,%s,%s,%s)",\
-                           (self.contactID,self.companyID,self.name,self.phone,\
-                            self.email,self.notes))
-        else:
-            cursor.execute("INSERT INTO project"\
-                           "(companyID, name, phone, email, notes)\
-                           (%s,%s,%s,%s,%s)",\
-                           (self.companyID,self.name,self.phone,self.email,\
-                            self.notes))
-            
+        cursor.execute("REPLACE INTO contact "\
+                       "(company_name, name, phone, email, notes)"\
+                       " VALUES (%s,%s,%s,%s,%s)",\
+                        (self.company_name,self.name,self.phone,\
+                        self.email,self.notes))
         connection.commit()
 
     def getByName(self,name):
@@ -209,12 +186,11 @@ class Contact(object):
         recordDict = cursor.fetchall()[0]
         
         if recordDict:
-            self.contactID = recordDict['contactID']
-            self.companyID = recordDict['companyID']
-            self.name      = recordDict['name']
-            self.email     = recordDict['email']
-            self.notes     = recordDict['notes']
-            self.phone     = recordDict['phone']
+            self.company_name = recordDict['company_name']
+            self.name = recordDict['name']
+            self.email = recordDict['email']
+            self.notes = recordDict['notes']
+            self.phone = recordDict['phone']
         else:
             print 'there was an error'
     
@@ -224,7 +200,7 @@ class Contact(object):
 class Project(object):
     def __init__(self, 
                  name          =None,
-                 companyID     =None,
+                 companyTab    =None,
                  hourlyPay     =None,
                  quotedHours   =None,
                  workedHours   =None,
