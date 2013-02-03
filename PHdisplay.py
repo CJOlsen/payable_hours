@@ -86,6 +86,15 @@ def company_selected(name,frame):
 
     update_contact_tab(company_name=company.name, clear=False)
 
+def company_delete_selected(name, frame):
+    """ called by the 'delete' button on the company tab
+        """
+    # needs an 'are you sure' prompt
+    PHdb.deleteCompanyByName(name)
+    company_listbox.delete(0, 'end')
+    populate_company_listbox()
+    
+
 def populate_company_listbox():
     for item in PHdb.getAllCompanies():
         company_listbox.insert('end',item)
@@ -100,7 +109,7 @@ def contact_selected(name, frame):
     clear_frame(frame)
     #get contact company, update company tab
     contact = PHdb.getContactByName(name)
-    contact_company_field.insert(0, contact.companyID)
+    contact_company_field.insert(0, contact.company_name)
     contact_name_field.insert(0, contact.name)
     contact_phone_field.insert(0, contact.phone)
     contact_email_field.insert(0, contact.email)
@@ -119,6 +128,15 @@ def contact_save():
     contact.write()
 
     update_project_tab(contact_name=contact.name, clear=False)
+
+def contact_delete_selected(name, frame):
+    """ called by the 'delete' button on the company tab
+        """
+    # needs an 'are you sure' prompt
+    PHdb.deleteContactByName(name)
+    contact_listbox.delete(0, 'end')
+    populate_contact_listbox(show_all=True)
+
 
 def clear_contact_listbox():
     contact_listbox.delete(0)
@@ -281,6 +299,11 @@ company_listbox_button = tk.Button(companyTab, text="Select",
                                            company_listbox.curselection()[0])
                                            ,companyTab))
 
+company_delete_selected_button = tk.Button(
+    companyTab, text="Delete", command = lambda: company_delete_selected(
+        company_listbox.get(company_listbox.curselection()[0])
+        ,companyTab))
+
 company_save_button = tk.Button(companyTab,text='Save',
                                 command = lambda: company_save(companyTab))
 
@@ -320,6 +343,13 @@ contact_listbox_button = tk.Button(contactTab, text="Select",
                                        contact_listbox.get(
                                            contact_listbox.curselection()[0])
                                            ,contactTab))
+
+
+contact_delete_selected_button = tk.Button(
+    contactTab, text="Delete", command = lambda: contact_delete_selected(
+        contact_listbox.get(contact_listbox.curselection()[0])
+        ,contactTab))
+
 
 contact_show_all_button = tk.Button(contactTab, text='Show All',
                                    command = lambda: contact_show_all())
@@ -431,6 +461,7 @@ company_notes_label.grid(row=5,column=0)
 
 company_listbox.grid(column=4,row=0,rowspan=5)
 company_listbox_button.grid(row=5,column=4)
+company_delete_selected_button.grid(row=6,column=4)
 company_save_button.grid(row=10,column=1)
 company_clear_button.grid(row=10,column=2)
 
@@ -451,7 +482,8 @@ contact_notes_label.grid(row=4,column=0)
 
 contact_listbox.grid(column=4,row=0,rowspan=5)
 contact_listbox_button.grid(row=5,column=4)
-contact_show_all_button.grid(row=6, column=4)
+contact_delete_selected_button.grid(row=6, column=4)
+contact_show_all_button.grid(row=7, column=4)
 contact_save_button.grid(row=5,column=1)
 contact_clear_button.grid(row=6,column=1)
 

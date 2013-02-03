@@ -57,6 +57,7 @@ def disconnectDB():
         connection.commit()
         connection.close()
 
+
 def getAllCompanies():
     """ Takes: nothing
         Selects all names from the company table
@@ -72,13 +73,30 @@ def getCompanyByName(name):
     company = Company()
     return company.getByName(name)
 
+def deleteCompanyByName(name):
+    """ Takes: a name string
+        Deletes the corresponding company from the database
+        Returns: nothing
+        """
+    company=Company()
+    company.deleteByName(name)
+
 def getContactByName(name):
     """ Takes: a name string
         Returns: a contact object corresponding to the name
         """
     contact = Contact()
     return contact.getByName(name)
+
+def deleteContactByName(name):
+    """ Takes: a name string
+        Deletes the corresponding contact from the database
+        Returns: nothing
+        """
+    contact=Contact()
+    contact.deleteByName(name)
     
+
 def getAllProjects():
     """ Takes: nothing
         Returns: all names from the project table
@@ -127,7 +145,7 @@ class Company(object):
     # a new object in two steps than mangle(?) __init__, but getByName really
     # is part of the initialization process (conceptually)
     def getByName(self,name):
-        """ Takes: a name string (and implied self)
+        """ Takes: a name string
             Queries the database for the company corresponding to the name
             string, and maps attributes ot local variables.
             Returns: self
@@ -149,7 +167,16 @@ class Company(object):
             
         cursor = connection.cursor()
         return self
-    
+
+    def deleteByName(self, name):
+        """ Takes a name string
+            Removes the corresponding company entry, if any, from the database
+            Returns nothing
+            """
+        global cursor, connection
+        cursor.execute("DELETE FROM company WHERE name=%s", (name))
+        connection.commit()
+   
     def write(self):
         """ Takes: nothing (implied self)
             Writes all data in the company object to the database, and commits
@@ -164,8 +191,8 @@ class Company(object):
         connection.commit()
 
 class Contact(object):
-    def __init__(self, name=None, company_name=None, phone=None, email=None,
-                 notes=None):
+    def __init__(self, name=None, company_name=None, phone=None,
+                 email=None, notes=None):
         self.name = name
         self.company_name = company_name
         self.phone = phone
@@ -191,8 +218,18 @@ class Contact(object):
             self.email = recordDict['email']
             self.notes = recordDict['notes']
             self.phone = recordDict['phone']
+            return self
         else:
             print 'there was an error'
+
+    def deleteByName(self, name):
+        """ Takes a name string
+            Removes the corresponding company entry, if any, from the database
+            Returns nothing
+            """
+        global cursor, connection
+        cursor.execute("DELETE FROM contact WHERE name=%s", (name))
+        connection.commit()
     
         
 
