@@ -154,7 +154,6 @@ def populate_contact_listbox(**kwargs):
 
         """
     clear_contact_listbox()
-    print 'kwargs: ', kwargs
     if kwargs['show_all'] == True:
         for contact in PHdb.get_all_contacts():
             contact_listbox.insert('end', contact)
