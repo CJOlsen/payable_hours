@@ -71,7 +71,7 @@ def create_table_structure():
                    "phone VARCHAR(15),"\
                    "notes VARCHAR(200),"\
                    "PRIMARY KEY (name));")
-    cursor.commit()
+    connection.commit()
     cursor.execute("CREATE TABLE contact ("\
                    "name VARCHAR(50),"\
                    "phone VARCHAR(15),"\
@@ -79,7 +79,7 @@ def create_table_structure():
                    "notes VARCHAR(200),"\
                    "company_name VARCHAR(50),"\
                    "PRIMARY KEY (name));")
-    cursor.commit()
+    connection.commit()
     cursor.execute("CREATE TABLE project ("\
                    "name VARCHAR(50),"\
                    "company_name VARCHAR(50),"\
@@ -94,7 +94,7 @@ def create_table_structure():
                    "project_active TINYINT(1),"\
                    "notes VARCHAR(400),"\
                    "PRIMARY KEY (name));")
-    cursor.commit()
+    connection.commit()
     cursor.execute("CREATE TABLE session ("\
                    "id INT(11),"\
                    "company_name VARCHAR(50),"\
@@ -104,7 +104,7 @@ def create_table_structure():
                    "time TIME,"\
                    "notes VARCHAR(400),"\
                    "PRIMARY KEY (id));")
-    cursor.commit()
+    connection.commit()
                    
 
 
@@ -307,38 +307,29 @@ class Project(object):
         self.contact_name = contact_name
         self.contact_phone = contact_phone
         self.notes = notes
-            
-## **will be changed**
-##    def write():
-##        # query to write to DB
-##        if self.company_name:
-##            # companyID should only be assigned by MySQl, so if an object
-##            # has one, it already exists and needs to be overwritten
-##            # REPLACE will overwrite or add new, INSERT adds new only
-##            cursor.execute("REPLACE INTO project\
-##                           (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
-##                           (self.name,self.companyID,self.hourlyPay,\
-##                            self.quotedHours,self.workedHours,self.billedHours,\
-##                            self.totalInvoiced,self.totalPaid,self.moneyOwed,\
-##                            self.projectActive,self.contactName,\
-##                            self.contactPhone,self.notes))
-##        else:
-##            cursor.execute("INSERT INTO project\
-##                           (name, address, city, state, phone, notes)\
-##                           (%s,%s,%s,%s,%s,%s)",\
-##                           (self.name,self.address,self.city,self.state,\
-##                            self.phone,self.notes))
-##
-##        # nothing is final until committed    
-##        connection.commit()
 
+
+
+    def write(self):
+        cursor.execute("REPLACE INTO project "\
+                       "(name, company_name, contact_name, hourly_pay, "\
+                       "quoted_hours, worked_hours, billed_hours, "\
+                       "total_invoiced, total_paid, money_owed, "\
+                       "project_active, notes)"\
+                       " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
+                        (self.name,self.company_name,self.contact_name,
+                         self.hourly_pay, self.quoted_hours, self.total_invoiced,
+                         self.total_paid, self.money_owed, self.project_active,
+                         self.notes))
+        connection.commit()
 
     def getRecordByName(self,name):
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM project WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
         
-        if recordDict:
+        if recordDict:\
+            # to do: fix order
             self.name           = record_dict['name']
             self.company_name   = record_dict['company_name']
             self.hourly_pay     = record_dict['hourly_pay']
@@ -350,7 +341,6 @@ class Project(object):
             self.money_owed     = record_dict['money_owed']
             self.project_active = record_dict['project_active']
             self.contact_name   = record_dict['contact_name']
-            self.contact_phone  = record_dict['contact_phone']
             self.notes          = record_dict['notes']
         else:
             print 'there was an error'
@@ -361,7 +351,7 @@ class Project(object):
     
 class Session(object):
     def __init__(self, 
-                 sessionid =None, company_name =None, project_name =None,
+                 sessionID =None, company_name =None, project_name =None,
                  start_time =None, stop_time =None, time =None, notes =None):
         self.sessionID = sessionID
         self.company_name = company_name
@@ -371,42 +361,31 @@ class Session(object):
         self.time = time
         self.notes = notes
 
+    def write(self):
+        cursor.execute("REPLACE INTO session "\
+                       "(id, company_name, project_name, start_time,"\
+                       "stop_time, time, notes)"\
+                       " VALUES (%s,%s,%s,%s,%s,%s,%s)",\
+                        (self.sessionID, self.company_name, self.project_name,\
+                       self.start_time, self.stop_time, self.time,\
+                       self.notes))
+        connection.commit()
 
-## ** will be changed **
-##    def write():
-##        # query to write to DB
-##        if self.sessionid:
-##            #sessionID should only be assigned by MySQl, so if an object
-##            #has one, it already exists and needs to be overwritten
-##            cursor.execute("REPLACE INTO session\
-##                           (%s,%s,%s,%s,%s,%s,%s)",\
-##                           (self.sessionID,self.companyID,self.projectID,\
-##                            self.startTime,self.stopTime,self.time,self.notes))
-##        else:
-##            cursor.execute("INSERT INTO session\
-##                           (companyID, projectID, startTime, stopTime,\
-##                           time,notes)(%s,%s,%s,%s,%s,%s)",\
-##                           (self.companyID,self.projectID,\
-##                            self.startTime,self.stopTime,self.time,self.notes))
-##            
-##        connection.commit()
-##
-##    def getRecordByName(self,name):
-##        cursor = connection.cursor(mdb.cursors.DictCursor)
-##        cursor.execute("SELECT * FROM session WHERE name=%s",(name))
-##        recordDict = cursor.fetchall()[0]
-##        
-##        if recordDict:
-##            self.name      = recordDict['name']
-##            self.sessionID = recordDict['sessionID']
-##            self.companyID = recordDict['companyID']
-##            self.projectID = recordDict['projectID']
-##            self.startTime = recordDict['startTime']
-##            self.stopTime  = recordDict['stopTime']
-##            self.time      = recordDict['time']
-##            self.notes     = recordDict['notes']
-##
-##        else:
-##            print 'there was an error'
-##        cursor = connection.cursor()
+    def getRecordByName(self,name):
+        cursor = connection.cursor(mdb.cursors.DictCursor)
+        cursor.execute("SELECT * FROM session WHERE name=%s",(name))
+        recordDict = cursor.fetchall()[0]
+        
+        if recordDict:
+            self.sessionID = recordDict['id']
+            self.company_name = recordDict['company_name']
+            self.project_name = recordDict['project_name']
+            self.start_time = recordDict['start_time']
+            self.stop_time = recordDict['stop_time']
+            self.time = recordDict['time']
+            self.notes = recordDict['notes']
+
+        else:
+            print 'there was an error'
+        cursor = connection.cursor()
 
