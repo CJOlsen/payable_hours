@@ -164,6 +164,13 @@ def get_active_projects():
     cursor.execute("SELECT name FROM project WHERE projectActive = True")
     return cursor.fetchall()
 
+def get_project_by_name(name):
+    """ Takes: a name string
+        Returns: a project object corresponding to that name
+        """
+    project = Project()
+    return project.get_by_name(name)
+
 def get_all_contacts():
     """ Takes: nothing
         Returns: all names from the contact table
@@ -288,12 +295,12 @@ class Contact(object):
 
 
 class Project(object):
+    # todo: fix order
     def __init__(self, 
                  name =None, company_name =None, hourly_pay =None,
                  quoted_hours =None, worked_hours =None, billed_hours =None,
                  total_invoiced =None, total_paid =None, money_owed =None,
-                 project_active =None, contact_name =None, contact_phone =None,
-                 notes =None):
+                 project_active =None, contact_name =None, notes =None):
         self.name = name
         self.company_name = company_name
         self.hourly_pay = hourly_pay
@@ -305,7 +312,7 @@ class Project(object):
         self.money_owed = money_owed
         self.project_active = project_active
         self.contact_name = contact_name
-        self.contact_phone = contact_phone
+        self.company_name = company_name
         self.notes = notes
 
 
@@ -318,18 +325,19 @@ class Project(object):
                        "project_active, notes)"\
                        " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
                         (self.name,self.company_name,self.contact_name,
-                         self.hourly_pay, self.quoted_hours, self.total_invoiced,
-                         self.total_paid, self.money_owed, self.project_active,
+                         self.hourly_pay, self.quoted_hours, self.worked_hours,
+                         self.billed_hours,self.total_invoiced,
+                         self.total_paid,self.money_owed, self.project_active,
                          self.notes))
+        
         connection.commit()
 
-    def getRecordByName(self,name):
+    def get_by_name(self,name):
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM project WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
         
-        if recordDict:\
-            # to do: fix order
+        if record_dict:
             self.name           = record_dict['name']
             self.company_name   = record_dict['company_name']
             self.hourly_pay     = record_dict['hourly_pay']
@@ -344,7 +352,7 @@ class Project(object):
             self.notes          = record_dict['notes']
         else:
             print 'there was an error'
-            
+
         cursor = connection.cursor()
         return self
 

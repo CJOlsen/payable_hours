@@ -156,10 +156,11 @@ def populate_contact_listbox(**kwargs):
     clear_contact_listbox()
     if kwargs['show_all'] == True:
         for contact in PHdb.get_all_contacts():
-            contact_listbox.insert('end', contact)
+            # contact[0] removes curly braces
+            contact_listbox.insert('end', contact[0])
     else:
         for contact in PHdb.get_contacts_for_company(company):
-            contact_listbox.insert('end', contact)
+            contact_listbox.insert('end', contact[0])
         
         
         
@@ -180,26 +181,31 @@ def contact_show_all():
 
 ### Project tab logic-------------------------------------------------------
 
-def project_selected(name):
+def project_selected(name, frame):
+
+    clear_frame(frame)
     #update company and contact tabs
     project = PHdb.get_project_by_name(name)
     project_name_field.insert(0, project.name)
     project_hourlyPay_field.insert(0, project.hourly_pay)
+    project_quotedHours_field.insert(0, project.quoted_hours)
     project_workedHours_field.insert(0, project.worked_hours)
     project_billedHours_field.insert(0, project.billed_hours)
     project_totalInvoiced_field.insert(0, project.total_invoiced)
     project_totalPaid_field.insert(0, project.total_paid)
     project_moneyOwed_field.insert(0, project.money_owed)
-    project_projectActive_field(0, project.project_active)
-    project_contactName_field(0, project.contact_name)
-    project_contactPhone_field(0, project.contact_phone)
+    project_projectActive_field.insert(0, project.project_active)
+    project_contactName_field.insert(0, project.contact_name)
+    project_companyName_field.insert(0, project.company_name)
+    project_notes_field.insert(0, project.notes)
 
     update_session_tab(project_name=project.name, clear=False)
     
-def save_project():
+def project_save():
     project = PHdb.Project()
     project.name = project_name_field.get()
     project.hourly_pay = project_hourlyPay_field.get()
+    project.quoted_hours = project_quotedHours_field.get()
     project.worked_hours = project_workedHours_field.get()
     project.billed_hours = project_billedHours_field.get()
     project.total_invoiced = project_totalInvoiced_field.get()
@@ -207,13 +213,45 @@ def save_project():
     project.money_owed = project_moneyOwed_field.get()
     project.project_active = project_projectActive_field.get()
     project.contact_name = project_contactName_field.get()
-    project.contact_phone = project_contactPhone_field.get()
+    project.company_name = project_companyName_field.get()
+    project.notes = project_notes_field.get()
+    
     project.write()
 
     update_session_tab(project_name=project.name, clear=False)
 
 def update_project_tab(**kwargs):
     pass
+
+
+def project_delete_selected(name, frame):
+    """ called by the 'delete' button on the company tab
+        """
+    # needs an 'are you sure' prompt
+    PHdb.delete_project_by_name(name)
+    project_listbox.delete(0, 'end')
+    populate_project_listbox(show_all=True)
+
+
+def clear_project_listbox():
+    project_listbox.delete(0, 'end')
+
+def populate_project_listbox(**kwargs):
+    """ Populates the project tab listbox.
+        All calls to this function must supply: a "show_all" key designating
+        whether or not the call is to show all projects, and if that is false
+        a "company" key to designate which company contacts to load. ???
+        Returns: Nothing
+
+        """
+    clear_project_listbox()
+    if kwargs['show_all'] == True:
+        for project in PHdb.get_all_projects():
+            # project[0] removes curly braces
+            project_listbox.insert('end', project[0])
+    else:
+        for project in PHdb.get_contacts_for_company(company):
+            project_listbox.insert('end', project[0])
 
 
 ### Session tab logic-------------------------------------------------------
@@ -380,9 +418,8 @@ project_totalPaid_field     = tk.Entry(project_tab,width=25)
 project_moneyOwed_field     = tk.Entry(project_tab,width=25)
 project_projectActive_field = tk.Entry(project_tab,width=5)
 project_contactName_field   = tk.Entry(project_tab,width=25)
-project_contactPhone_field  = tk.Entry(project_tab,width=25)
-#project_notes_field         = tk.Entry(project_tab,width=200)\
-#                              .grid(row=11,column=1)
+project_companyName_field   = tk.Entry(project_tab,width=25)
+project_notes_field         = tk.Entry(project_tab,width=25)
 
 project_name_label          = tk.Label(project_tab,text="Project Name")
 project_hourlyPay_label     = tk.Label(project_tab,text="Hourly Pay")
@@ -394,28 +431,44 @@ project_totalPaid_label     = tk.Label(project_tab,text="Total Paid")
 project_moneyOwed_label     = tk.Label(project_tab,text="Money Owed")
 project_projectActive_label = tk.Label(project_tab,text="Project Active")
 project_contactName_label   = tk.Label(project_tab,text="Contact Name")
-project_contactPhone_label  = tk.Label(project_tab,text="Contact Phone")
-project_notes_label         = tk.Label(project_tab,text="Notes Label")
-
-#company list box
-
-#contact list box
- ## create the listboxes
-project_company_listbox = tk.Listbox(project_tab)
-project_contact_listbox = tk.Listbox(project_tab)
-
-for item in PHdb.get_all_companies():
-    project_company_listbox.insert('end',item)
-
-def update_project_company_listbox(name):
-    for item in PHdb.get_contacts_for_company(name):
-        project_contact_listbox.insert('end',item)
-
-        
-    ## create a button to select from the company listbox
-    ## ...
+project_companyName_label   = tk.Label(project_tab,text="Company Name")
+project_notes_label         = tk.Label(project_tab,text="Notes")
 
 
+# contact list box
+project_listbox = tk.Listbox(project_tab)
+
+
+for item in PHdb.get_all_projects():
+    project_listbox.insert('end',item)
+
+
+
+# this needs a lambda function because it stores the result of the command
+project_listbox_button = tk.Button(project_tab, text="Select",
+                                   command = lambda: project_selected(
+                                       project_listbox.get(
+                                           project_listbox.curselection()[0])
+                                           ,project_tab))
+
+
+project_delete_selected_button = tk.Button(
+    project_tab, text="Delete", command = lambda: project_delete_selected(
+        project_listbox.get(project_listbox.curselection()[0])
+        ,project_tab))
+
+
+project_show_all_button = tk.Button(project_tab, text='Show All',
+                                   command = lambda: project_show_all())
+
+project_save_button = tk.Button(project_tab,text='Save',
+                                command = lambda: project_save())
+
+project_clear_button = tk.Button(project_tab,text='Clear',
+                                 command = lambda: \
+                                 [field.delete(0,'end') for field in\
+                                  project_tab.winfo_children() \
+                                  if field.winfo_class() == 'Entry'])
 
                               
 #### session page content -----------------------------------------------------
@@ -465,10 +518,10 @@ company_phone_label.grid(row=4,column=0)
 company_notes_label.grid(row=5,column=0)
 
 company_listbox.grid(column=4,row=0,rowspan=5)
-company_listbox_button.grid(row=5,column=4)
-company_delete_selected_button.grid(row=6,column=4)
-company_save_button.grid(row=10,column=1)
-company_clear_button.grid(row=10,column=2)
+company_listbox_button.grid(row=6,column=4)
+company_delete_selected_button.grid(row=7,column=4)
+company_save_button.grid(row=7,column=1)
+company_clear_button.grid(row=7,column=2)
 
 populate_company_listbox()
 
@@ -505,7 +558,8 @@ project_totalPaid_field.grid(row=6,column=1)
 project_moneyOwed_field.grid(row=7,column=1)
 project_projectActive_field.grid(row=8,column=1)
 project_contactName_field.grid(row=9,column=1)
-project_contactPhone_field.grid(row=10,column=1)
+project_companyName_field.grid(row=10,column=1)
+project_notes_field.grid(row=11,column=1)
 
 project_name_label.grid(row=0,column=0)
 project_hourlyPay_label.grid(row=1,column=0)
@@ -517,8 +571,18 @@ project_totalPaid_label.grid(row=6,column=0)
 project_moneyOwed_label.grid(row=7,column=0)
 project_projectActive_label.grid(row=8,column=0)
 project_contactName_label.grid(row=9,column=0)
-project_contactPhone_label.grid(row=10,column=0)
+project_companyName_label.grid(row=10,column=0)
 project_notes_label.grid(row=11,column=0)
+
+project_listbox.grid(column=4, row=0, rowspan=5)
+project_listbox_button.grid(row=5,column=4)
+project_delete_selected_button.grid(row=6, column=4)
+project_show_all_button.grid(row=7, column=4)
+project_save_button.grid(row=12,column=1)
+project_clear_button.grid(row=13,column=1)
+
+populate_project_listbox(show_all=True)
+
 
   ## display the session widgets
 session_startTime_field.grid(row=0,column=1)
