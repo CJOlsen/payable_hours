@@ -70,7 +70,7 @@ def company_selected(name,frame):
     """ called by the select button on the company tab
         """
     clear_frame(frame)
-    company = PHdb.get_company_by_name(name)
+    company = PHdb.Company.get_by_name(name)
 
     company_name_field.insert(0,company.name)
     if company.address:
@@ -90,13 +90,13 @@ def company_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
         """
     # needs an 'are you sure' prompt
-    PHdb.delete_company_by_name(name)
+    PHdb.Company.delete_by_name(name)
     company_listbox.delete(0, 'end')
     populate_company_listbox()
     
 
 def populate_company_listbox():
-    for item in PHdb.get_all_companies():
+    for item in PHdb.Company.get_all_companies():
         company_listbox.insert('end',item)
     
 
@@ -108,7 +108,7 @@ def contact_selected(name, frame):
         """
     clear_frame(frame)
     #get contact company, update company tab
-    contact = PHdb.get_contact_by_name(name)
+    contact = PHdb.Contact.get_by_name(name)
     contact_company_field.insert(0, contact.company_name)
     contact_name_field.insert(0, contact.name)
     contact_phone_field.insert(0, contact.phone)
@@ -137,7 +137,7 @@ def contact_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
         """
     # needs an 'are you sure' prompt
-    PHdb.delete_contact_by_name(name)
+    PHdb.Contact.delete_by_name(name)
     contact_listbox.delete(0, 'end')
     populate_contact_listbox(show_all=True)
 
@@ -155,11 +155,11 @@ def populate_contact_listbox(**kwargs):
         """
     clear_contact_listbox()
     if kwargs['show_all'] == True:
-        for contact in PHdb.get_all_contacts():
+        for contact in PHdb.Contact.get_all_contacts():
             # contact[0] removes curly braces
             contact_listbox.insert('end', contact[0])
     else:
-        for contact in PHdb.get_contacts_for_company(company):
+        for contact in PHdb.Contact.get_contacts_for_company(company):
             contact_listbox.insert('end', contact[0])
         
         
@@ -185,7 +185,7 @@ def project_selected(name, frame):
 
     clear_frame(frame)
     #update company and contact tabs
-    project = PHdb.get_project_by_name(name)
+    project = PHdb.Project.get_by_name(name)
     project_name_field.insert(0, project.name)
     project_hourlyPay_field.insert(0, project.hourly_pay)
     project_quotedHours_field.insert(0, project.quoted_hours)
@@ -228,7 +228,7 @@ def project_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
         """
     # needs an 'are you sure' prompt
-    PHdb.delete_project_by_name(name)
+    PHdb.Project.delete_by_name(name)
     project_listbox.delete(0, 'end')
     populate_project_listbox(show_all=True)
 
@@ -246,18 +246,18 @@ def populate_project_listbox(**kwargs):
         """
     clear_project_listbox()
     if kwargs['show_all'] == True:
-        for project in PHdb.get_all_projects():
+        for project in PHdb.Project.get_all_projects():
             # project[0] removes curly braces
             project_listbox.insert('end', project[0])
     else:
-        for project in PHdb.get_contacts_for_company(company):
+        for project in PHdb.Contact.get_contacts_for_company(company):
             project_listbox.insert('end', project[0])
 
 
 ### Session tab logic-------------------------------------------------------
 
 def session_selected(datetime):
-    session = PHdb.get_session_by_sessionID(sessionID)
+    session = PHdb.Session.get_session_by_sessionID(sessionID)
     session_sessionID_field.insert(0, session.sessionID)
     session_companyName_field.insert(0, session.company_name)
     session_projectName_field.insert(0, session.project_name)
@@ -265,6 +265,7 @@ def session_selected(datetime):
     session_stopTime_field.insert(0, session.stop_time)
     session_time_field.insert(0, session.time)
     session_notes_field.insert(0, session.notes)
+    session_gitCommit_field.insert(0, session.git_commit)
 
 
 def save_session():
@@ -276,6 +277,7 @@ def save_session():
     session.stopTime = session_stopTime_field.get()
     session.time = session_time_field.get()
     session.notes = session_notes_field.get()
+    session.gitCommit = session_gitCommit_field.get()
     session.write()
 
 def new_session():
@@ -283,6 +285,10 @@ def new_session():
 
 def update_session_tab(**kwaargs):
     pass
+
+## need: session save, session clear, session listbox, delete from listbox,
+##       select from listbox, project listbox, select project from listbox,
+##       start session, stop session!!!
 
 
 
@@ -373,7 +379,7 @@ contact_notes_label = tk.Label(contact_tab,text="Notes")
 contact_listbox = tk.Listbox(contact_tab)
 
 
-for item in PHdb.get_all_contacts():
+for item in PHdb.Contact.get_all_contacts():
     contact_listbox.insert('end',item)
 
 
@@ -439,7 +445,7 @@ project_notes_label         = tk.Label(project_tab,text="Notes")
 project_listbox = tk.Listbox(project_tab)
 
 
-for item in PHdb.get_all_projects():
+for item in PHdb.Project.get_all_projects():
     project_listbox.insert('end',item)
 
 
@@ -473,15 +479,21 @@ project_clear_button = tk.Button(project_tab,text='Clear',
                               
 #### session page content -----------------------------------------------------
 
-session_startTime_field    = tk.Entry(session_tab,width=15)
-session_stopTime_field     = tk.Entry(session_tab,width=15)
-session_time_field         = tk.Entry(session_tab,width=15)
-#session_notes_field        = tk.Entry(session_tab,width=200).grid(row=3,column=1)
+session_startTime_field = tk.Entry(session_tab,width=15)
+session_stopTime_field = tk.Entry(session_tab,width=15)
+session_time_field = tk.Entry(session_tab,width=15)
+session_notes_field = tk.Entry(session_tab,width=15)
+session_companyName_field = tk.Entry(session_tab,width=15)
+session_projectName_field = tk.Entry(session_tab,width=15)
+session_gitCommit_field = tk.Entry(session_tab,width=15)
 
 session_startTime_label    = tk.Label(session_tab,text="Start time")
 session_stopTime_label     = tk.Label(session_tab,text="Stop time")
 session_time_label         = tk.Label(session_tab,text="Time")
 session_notes_label        = tk.Label(session_tab,text="Notes")
+session_companyName_label = tk.Label(session_tab,text="Company Name")
+session_projectName_label = tk.Label(session_tab,text="Project Name")
+session_gitCommit_label = tk.Label(session_tab,text="Git Commit")
 
 #company list box
 
@@ -588,47 +600,24 @@ populate_project_listbox(show_all=True)
 session_startTime_field.grid(row=0,column=1)
 session_stopTime_field.grid(row=1,column=1)
 session_time_field.grid(row=2,column=1)
+session_notes_field.grid(row=3,column=1)
+session_companyName_field.grid(row=4,column=1)
+session_projectName_field.grid(row=5,column=1)
+session_gitCommit_field.grid(row=6,column=1)
 
 session_startTime_label.grid(row=0,column=0)
 session_stopTime_label.grid(row=1,column=0)
 session_time_label.grid(row=2,column=0)
 session_notes_label.grid(row=3,column=0)
+session_companyName_label.grid(row=4,column=0)
+session_projectName_label.grid(row=5,column=0)
+session_gitCommit_label.grid(row=6,column=0)
 
 
 ## 
 ## This line is so necessary.  Don't remove it.
 ##
 root.mainloop()
-
-
-
-"""
-    WHAT WILL THE GUI NEED?
-        -five tabs:
-            -Company
-                - show all data
-                - select company dropdown
-                - save changes button
-            -Contact
-                - show all data
-                - select contact dropdown
-                - save changes button
-            -Project
-                - show all data
-                - select project
-                - save changes button
-                - start/stop project session
-            -Session
-                - session search feature
-                - show all data
-                - save changes button
-                - start/stop button
-                - combine sessions
-            -MySQL prompt
-                - Open a window with a MySQL command line interface
-"""
-
-    
 
 
 

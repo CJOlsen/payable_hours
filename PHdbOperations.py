@@ -99,93 +99,15 @@ def create_table_structure():
                    "id INT(11),"\
                    "company_name VARCHAR(50),"\
                    "project_name VARCHAR(50),"\
+                   "project_session_number INT(4),"\
                    "start_time DATETIME,"\
                    "stop_time DATETIME,"\
                    "time TIME,"\
                    "notes VARCHAR(400),"\
+                   "git_commit VARCHAR(12),"\
                    "PRIMARY KEY (id));")
     connection.commit()
-                   
 
-
-
-
-
-def get_all_companies():
-    """ Takes: nothing
-        Selects all names from the company table
-        Returns: all company names
-        """
-    cursor.execute("SELECT name FROM company")
-    return [x[0] for x in cursor.fetchall()]
-    
-def get_company_by_name(name):
-    """ Takes: a name string
-        Returns: a company object corresponding to the name
-        """
-    company = Company()
-    return company.get_by_name(name)
-
-def delete_company_by_name(name):
-    """ Takes: a name string
-        Deletes the corresponding company from the database
-        Returns: nothing
-        """
-    company=Company()
-    company.delete_by_name(name)
-
-def get_contact_by_name(name):
-    """ Takes: a name string
-        Returns: a contact object corresponding to the name
-        """
-    contact = Contact()
-    return contact.get_by_name(name)
-
-def delete_contact_by_name(name):
-    """ Takes: a name string
-        Deletes the corresponding contact from the database
-        Returns: nothing
-        """
-    contact=Contact()
-    contact.delete_by_name(name)
-    
-
-def get_all_projects():
-    """ Takes: nothing
-        Returns: all names from the project table
-        """
-    cursor.execute("SELECT name FROM project")
-    return cursor.fetchall()
-
-def get_active_projects():
-    """ Takes: nothing
-        Returns: all names from the project table if the project is active
-        """
-    cursor.execute("SELECT name FROM project WHERE projectActive = True")
-    return cursor.fetchall()
-
-def get_project_by_name(name):
-    """ Takes: a name string
-        Returns: a project object corresponding to that name
-        """
-    project = Project()
-    return project.get_by_name(name)
-
-def get_all_contacts():
-    """ Takes: nothing
-        Returns: all names from the contact table
-        """
-    cursor.execute("SELECT name FROM contact")
-    return cursor.fetchall()
-
-def get_contacts_for_company(name):
-    # to do
-    pass
-
-def get_contact_by_ID():
-    # to do
-    pass
-    
 
 
     
@@ -201,34 +123,36 @@ class Company(object):
         self.phone     = phone
         self.notes     = notes
 
-    # because Python doesn't allow multiple init's it's easier to initialize
-    # a new object in two steps than mangle(?) __init__, but getByName really
-    # is part of the initialization process (conceptually)
-    def get_by_name(self,name):
+    @classmethod
+    def get_by_name(cls,name):
+        ## these get_by_name methods might need to be reworked?
         """ Takes: a name string
             Queries the database for the company corresponding to the name
             string, and maps attributes ot local variables.
-            Returns: self
+            Returns: a new Company instance
             """
         global cursor
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM company WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
+
+        new_object = Company()
         
         if record_dict:
-            self.name      = record_dict['name']
-            self.address   = record_dict['address']
-            self.city      = record_dict['city']
-            self.state     = record_dict['state']
-            self.phone     = record_dict['phone']
-            self.notes     = record_dict['notes']
+            new_object.name = record_dict['name']
+            new_object.address = record_dict['address']
+            new_object.city = record_dict['city']
+            new_object.state = record_dict['state']
+            new_object.phone = record_dict['phone']
+            new_object.notes = record_dict['notes']
         else:
             print 'there was an error'
             
         cursor = connection.cursor()
-        return self
+        return new_object
 
-    def delete_by_name(self, name):
+    @classmethod
+    def delete_by_name(cls, name):
         """ Takes a name string
             Removes the corresponding company entry, if any, from the database
             Returns nothing
@@ -238,7 +162,7 @@ class Company(object):
         connection.commit()
    
     def write(self):
-        """ Takes: nothing (implied self)
+        """ Takes: implied self
             Writes all data in the company object to the database, and commits
             Returns: Nothing
             """
@@ -249,6 +173,25 @@ class Company(object):
                         (self.name,self.address,self.city,\
                         self.state,self.phone,self.notes))
         connection.commit()
+
+    @staticmethod
+    def get_all_companies():
+        """ Takes: nothing
+            Selects all names from the company table
+            Returns: all company names
+            """
+        cursor.execute("SELECT name FROM company")
+        return [x[0] for x in cursor.fetchall()]
+
+    @staticmethod
+    def delete_company_by_name(name):
+        """ Takes: a name string
+            Deletes the corresponding company from the database
+            Returns: nothing
+            """
+        company=Company()
+        company.delete_by_name(name)
+        
 
 class Contact(object):
     def __init__(self, name=None, company_name=None, phone=None,
@@ -267,22 +210,35 @@ class Contact(object):
                         self.email,self.notes))
         connection.commit()
 
-    def get_by_name(self,name):
+    @classmethod
+    def get_by_name(cls,name):
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM contact WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
-        
+
+        new_contact_obj = Contact()
         if record_dict:
-            self.company_name = record_dict['company_name']
-            self.name = record_dict['name']
-            self.email = record_dict['email']
-            self.notes = record_dict['notes']
-            self.phone = record_dict['phone']
-            return self
+            new_contact_obj.company_name = record_dict['company_name']
+            new_contact_obj.name = record_dict['name']
+            new_contact_obj.email = record_dict['email']
+            new_contact_obj.notes = record_dict['notes']
+            new_contact_obj.phone = record_dict['phone']
         else:
             print 'there was an error'
 
-    def delete_by_name(self, name):
+        cursor = connection.cursor()
+        return new_contact_obj
+
+    @staticmethod
+    def get_all_contacts():
+        """ Takes: nothing
+            Returns: all names from the contact table
+            """
+        cursor.execute("SELECT name FROM contact")
+        return cursor.fetchall()
+
+    @staticmethod
+    def delete_by_name(name):
         """ Takes a name string
             Removes the corresponding company entry, if any, from the database
             Returns nothing
@@ -290,8 +246,7 @@ class Contact(object):
         global cursor, connection
         cursor.execute("DELETE FROM contact WHERE name=%s", (name))
         connection.commit()
-    
-        
+
 
 
 class Project(object):
@@ -332,68 +287,99 @@ class Project(object):
         
         connection.commit()
 
-    def get_by_name(self,name):
+    @classmethod
+    def get_by_name(cls,name):
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM project WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
-        
+
+        new_project_obj = Project()
         if record_dict:
-            self.name           = record_dict['name']
-            self.company_name   = record_dict['company_name']
-            self.hourly_pay     = record_dict['hourly_pay']
-            self.quoted_hours   = record_dict['quoted_hours']
-            self.worked_hours   = record_dict['worked_hours']
-            self.billed_hours   = record_dict['billed_hours']
-            self.total_invoiced = record_dict['total_invoiced']
-            self.total_paid     = record_dict['total_paid']
-            self.money_owed     = record_dict['money_owed']
-            self.project_active = record_dict['project_active']
-            self.contact_name   = record_dict['contact_name']
-            self.notes          = record_dict['notes']
+            new_project_obj.name           = record_dict['name']
+            new_project_obj.company_name   = record_dict['company_name']
+            new_project_obj.hourly_pay     = record_dict['hourly_pay']
+            new_project_obj.quoted_hours   = record_dict['quoted_hours']
+            new_project_obj.worked_hours   = record_dict['worked_hours']
+            new_project_obj.billed_hours   = record_dict['billed_hours']
+            new_project_obj.total_invoiced = record_dict['total_invoiced']
+            new_project_obj.total_paid     = record_dict['total_paid']
+            new_project_obj.money_owed     = record_dict['money_owed']
+            new_project_obj.project_active = record_dict['project_active']
+            new_project_obj.contact_name   = record_dict['contact_name']
+            new_project_obj.notes          = record_dict['notes']
         else:
             print 'there was an error'
 
         cursor = connection.cursor()
-        return self
+        return new_project_obj
+
+    @staticmethod
+    def get_all_projects():
+        """ Takes: nothing
+            Returns: all names from the project table
+            """
+        cursor.execute("SELECT name FROM project")
+        return cursor.fetchall()
+
+    @staticmethod
+    def get_active_projects():
+        """ Takes: nothing
+            Returns: all names from the project table if the project is active
+            """
+        cursor.execute("SELECT name FROM project WHERE projectActive = True")
+        return cursor.fetchall()
 
     
 class Session(object):
+    # needs a way to lookup last project_session_number *for that project* and
+    # assign the next number to a new session
+    
     def __init__(self, 
                  sessionID =None, company_name =None, project_name =None,
-                 start_time =None, stop_time =None, time =None, notes =None):
+                 project_session_number=None, start_time =None, stop_time =None,
+                 time =None, notes =None, git_commit =None):
         self.sessionID = sessionID
         self.company_name = company_name
         self.project_name = project_name
+        self.project_session_number = project_session_number
         self.start_time = start_time
         self.stop_time = stop_time
         self.time = time
         self.notes = notes
+        self.git_commit = git_commit
 
     def write(self):
         cursor.execute("REPLACE INTO session "\
                        "(id, company_name, project_name, start_time,"\
-                       "stop_time, time, notes)"\
-                       " VALUES (%s,%s,%s,%s,%s,%s,%s)",\
-                        (self.sessionID, self.company_name, self.project_name,\
-                       self.start_time, self.stop_time, self.time,\
-                       self.notes))
+                       "stop_time, time, notes, git_commit)"\
+                       " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",\
+                        (self.sessionID, self.company_name, self.project_name,
+                         self.project_session_number, self.start_time,
+                         self.stop_time, self.time, self.notes,
+                         self.git_commit))
         connection.commit()
 
-    def getRecordByName(self,name):
+    def get_session_by_sessionID(self,sessionID):
+        ## implies a naming convention for sessions.... TODO!!!
+        ## -- projectname.session_number?
         cursor = connection.cursor(mdb.cursors.DictCursor)
-        cursor.execute("SELECT * FROM session WHERE name=%s",(name))
-        recordDict = cursor.fetchall()[0]
-        
-        if recordDict:
-            self.sessionID = recordDict['id']
-            self.company_name = recordDict['company_name']
-            self.project_name = recordDict['project_name']
-            self.start_time = recordDict['start_time']
-            self.stop_time = recordDict['stop_time']
-            self.time = recordDict['time']
-            self.notes = recordDict['notes']
+        cursor.execute("SELECT * FROM session WHERE sessionID=%s",(sessionID))
+        record_dict = cursor.fetchall()[0]
+
+        new_session_obj = Session()
+        if record_dict:
+            new_session_obj.sessionID = record_dict['id']
+            new_session_obj.company_name = record_dict['company_name']
+            new_session_obj.project_name = record_dict['project_name']
+            new_session_obj.project_session_number = record_dict['project_session_number']
+            new_session_obj.start_time = record_dict['start_time']
+            new_session_obj.stop_time = record_dict['stop_time']
+            new_session_obj.time = record_dict['time']
+            new_session_obj.notes = record_dict['notes']
+            new_session_obj.git_commit = record_dict['git_commit']
 
         else:
             print 'there was an error'
+            
         cursor = connection.cursor()
-
+        return new_session_obj
