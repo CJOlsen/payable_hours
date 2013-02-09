@@ -29,9 +29,9 @@ import ttk
 #connect to database
 connection,cursor = PHdb.connectDB()
 
-################################################################################
+###############################################################################
 #### LOGIC (the Controller in MVC)
-################################################################################
+###############################################################################
 
 ### Clear tab function
 
@@ -297,6 +297,99 @@ def update_session_tab(**kwaargs):
 ##       select from listbox, project listbox, select project from listbox,
 ##       start session, stop session!!!
 
+## session_session_listbox
+## session_project_listbox
+
+
+# session tab session listbox
+def session_session_delete_selected(name, frame):
+    """ called by the 'delete' button on the session tab
+        """
+    # needs an 'are you sure' prompt
+    PHdb.Session.delete_by_name(name)
+    session_session_listbox.delete(0, 'end')
+    populate_session_session_listbox(show_all=True)
+
+
+def clear_session_session_listbox():
+    session_session_listbox.delete(0, 'end')
+
+def populate_session_session_listbox(**kwargs):
+    """ Populates the session tab's sesssion listbox.
+        All calls to this function must supply: a "show_all" key designating
+        whether or not the call is to show all contacts, and if that is false
+        a "project" key to designate which sessions to load.
+        Returns: Nothing
+
+        """
+    clear_contact_listbox()
+    if kwargs['show_all'] == True:
+        for session in PHdb.Session.get_all_sessions():
+            # the [0] after contact removes curly braces
+            contact_listbox.insert('end', contact[0])
+    else:
+        for session in PHdb.Session.get_sessions_for_project(project):
+            session_session_listbox.insert('end', session[0])
+
+
+# session tab project listbox
+# projects can only be selected on the session tab
+def clear_session_session_listbox():
+    session_project_listbox.delete(0, 'end')
+
+def populate_session_session_listbox(**kwargs):
+    """ Populates the session tab's sesssion listbox.
+        All calls to this function must supply: a "show_all" key designating
+        whether or not the call is to show all contacts, and if that is false
+        a "project" key to designate which sessions to load.
+        Returns: Nothing
+
+        """
+    clear_contact_listbox()
+    if kwargs['show_all'] == True:
+        for session in PHdb.Session.get_all_sessions():
+            # the [0] after contact removes curly braces
+            contact_listbox.insert('end', contact[0])
+    else:
+        for session in PHdb.Session.get_sessions_for_project(project):
+            session_session_listbox.insert('end', session[0])
+
+def session_project_selected(name, frame):
+    """ Called by the 'Select' button for the project listbox on the session
+        tab.
+
+        """
+    print "session_project_selected()"
+
+def session_session_selected(name, frame):
+    """ Called by the "Select' button for the session listbox on the session
+        tab.
+
+        """
+    print "session_session_selected()"
+
+def session_session_deleted(name, frame):
+    """ Called by the "Delete' button for the session listbox on the session
+        tab.
+
+        """
+    print "session_session_deleted()"
+
+def session_session_show_all(frame):
+    """ Called by the "Show All" button for the session listbox on the session
+        tab.
+
+        """
+    print "session_session_show_all()"
+
+def session_session_save(frame):
+    """ Called by the "Save" button for the session listbox on the session
+        tab.
+
+        """
+    print "session_session_save()"
+
+
 
 
 ################################################################################
@@ -502,11 +595,54 @@ session_companyName_label = tk.Label(session_tab,text="Company Name")
 session_projectName_label = tk.Label(session_tab,text="Project Name")
 session_gitCommit_label = tk.Label(session_tab,text="Git Commit")
 
-#company list box
+# session tab project list box
+session_project_listbox = tk.Listbox(session_tab)
+session_project_listbox_label = tk.Label(session_tab, text="Project:")
 
-#contact list box
+# create a button to select from the listbox
+# this needs a lambda function because it stores the result of the command
+session_project_listbox_button = tk.Button(session_tab, text="Select",
+                                   command = lambda: session_project_selected(
+                                       session_project_listbox.get(
+                                           session_project_listbox.curselection()[0])
+                                           ,session_tab))
+# populate the session tab project listbox
+for item in PHdb.Project.get_all_projects():
+    session_project_listbox.insert('end',item[0])
 
-#project list box
+
+# session tab session list box
+session_session_listbox_label = tk.Label(session_tab, text="Session:")
+session_session_listbox = tk.Listbox(session_tab)
+
+# this needs a lambda function because it stores the result of the command
+session_session_listbox_button = tk.Button(session_tab, text="Select",
+                                   command = lambda: session_session_selected(
+                                       session_session_listbox.get(
+                                           session_session_listbox.curselection()[0])
+                                           ,session_tab))
+
+
+session_session_delete_selected_button = tk.Button(
+    session_tab, text="Delete",
+    command = lambda: session_session_delete_selected(
+        session_session_listbox.get(session_session_listbox.curselection()[0])
+        ,session_tab))
+
+
+session_session_show_all_button = tk.Button(session_tab, text='Show All',
+                                   command = lambda: session_session_show_all())
+
+session_session_save_button = tk.Button(contact_tab,text='Save',
+                                command = lambda: session_session_save())
+
+##session_session_clear_button = tk.Button(session_tab,text='Clear',
+##                                 command = lambda: \
+##                                 [field.delete(0,'end') for field in\
+##                                  contact_tab.winfo_children() \
+##                                  if field.winfo_class() == 'Entry'])
+
+
 
 
 
@@ -619,6 +755,17 @@ session_notes_label.grid(row=3,column=0)
 session_companyName_label.grid(row=4,column=0)
 session_projectName_label.grid(row=5,column=0)
 session_gitCommit_label.grid(row=6,column=0)
+
+session_project_listbox_label.grid(column=4, row=0, sticky='w')
+session_project_listbox.grid(column=4, row=1, rowspan=4)
+session_project_listbox_button.grid(column=4, row=5)
+
+session_session_listbox_label.grid(column=4, row=6, sticky='w')
+session_session_listbox.grid(column=4, row=7, rowspan=4)
+session_session_listbox_button.grid(column=4, row=11)
+session_session_delete_selected_button.grid(column=4, row=12)
+session_session_show_all_button.grid(column=4, row=13)
+session_session_save_button.grid(column=4, row=14)
 
 
 ## 

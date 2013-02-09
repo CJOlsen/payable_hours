@@ -348,6 +348,16 @@ class Project(object):
         cursor.execute("SELECT name FROM project WHERE projectActive = True")
         return cursor.fetchall()
 
+    @staticmethod
+    def delete_by_name(name):
+        """ Takes a name string
+            Removes the corresponding project entry, if any, from the database
+            Returns: nothing
+            """
+        global cursor, connection
+        cursor.execute("DELETE FROM project WHERE name=%s", (name))
+        connection.commit()
+
     
 class Session(object):
     """ ORM Session class.  Interface for the "session" table of the database
