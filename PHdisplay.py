@@ -21,12 +21,6 @@
 ## *** THIS FILE HOLDS THE DISPLAY AND LOGIC CODE, FOR MYSQL INTERFACE SEE 
 ##     PHdbOperations.py ***
 
-
-## ******** TODO
-## ******** company list box on company tab needs to update
-
-
-
 import sys
 import PHdbOperations as PHdb
 import Tkinter as tk
@@ -42,6 +36,9 @@ connection,cursor = PHdb.connectDB()
 ### Clear tab function
 
 def clear_frame(tab_frame):
+    """ Clears the fields of any given tab
+
+        """
     fields = tab_frame.winfo_children()
     [field.delete(0,'end') for field in fields\
      if field.winfo_class() == "Entry"]
@@ -118,6 +115,8 @@ def contact_selected(name, frame):
     update_project_tab(contact_name=contact.name, clear=False)
 
 def contact_save():
+    """ called by the save button on the contact tab
+        """
     # create a new contact object and write it to the db
     contact = PHdb.Contact()
     contact.company_name = contact_company_field.get()
@@ -156,7 +155,7 @@ def populate_contact_listbox(**kwargs):
     clear_contact_listbox()
     if kwargs['show_all'] == True:
         for contact in PHdb.Contact.get_all_contacts():
-            # contact[0] removes curly braces
+            # the [0] after contact removes curly braces
             contact_listbox.insert('end', contact[0])
     else:
         for contact in PHdb.Contact.get_contacts_for_company(company):
@@ -270,7 +269,7 @@ def session_selected(datetime):
 
 def save_session():
     session = PHdb.Session()
-    session.sessionID = session_sessionID_field.get()
+    
     session.companyID = session_companyName_field.get()
     session.projectID = session_projectName_field.get()
     session.startTime = session_startTime_field.get()
@@ -278,6 +277,14 @@ def save_session():
     session.time = session_time_field.get()
     session.notes = session_notes_field.get()
     session.gitCommit = session_gitCommit_field.get()
+
+    try:
+        session.sessionID = session_sessionID_field.get()
+        if len(session.sessionID) < 1:
+            raise Exception
+    except:
+        PHdb.session.get_session_number
+        session.sessionID = PHdb.session.make_sessionID(session)
     session.write()
 
 def new_session():

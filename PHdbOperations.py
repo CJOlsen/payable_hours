@@ -21,6 +21,8 @@
 
 
 import MySQLdb as mdb
+import datetime
+import time
 import sys
 
 # globals 
@@ -31,8 +33,7 @@ cursor = None
 # these methods are the interface for the database and database objects
 
 def connectDB():
-    """ Takes: nothing
-        Tries to create a connection to the MySQL database.
+    """ Tries to create a connection to the MySQL database.
         Returns: connection, cursor (which are None if the con fails)
         """
     global connection, cursor
@@ -49,8 +50,7 @@ def connectDB():
     return connection, cursor
 
 def disconnectDB():
-    """ Takes: nothing
-        Disconnects from the database.
+    """ Disconnects from the database.
         Returns: nothing
         """
     if connection:
@@ -61,6 +61,7 @@ def disconnectDB():
 def create_table_structure():
     """ Needs a connection with an empty database and sufficient privileges.
         Creates the table structure for the program (subject to change.)
+        Returns: nothing
         """
     global connection, cursor
     cursor.execute("CREATE TABLE company ("\
@@ -96,7 +97,7 @@ def create_table_structure():
                    "PRIMARY KEY (name));")
     connection.commit()
     cursor.execute("CREATE TABLE session ("\
-                   "id INT(11),"\
+                   "sessionID VARCHAR(20),"\
                    "company_name VARCHAR(50),"\
                    "project_name VARCHAR(50),"\
                    "project_session_number INT(4),"\
@@ -105,7 +106,7 @@ def create_table_structure():
                    "time TIME,"\
                    "notes VARCHAR(400),"\
                    "git_commit VARCHAR(12),"\
-                   "PRIMARY KEY (id));")
+                   "PRIMARY KEY (project_name, project_session_number));")
     connection.commit()
 
 
@@ -113,6 +114,9 @@ def create_table_structure():
     
 # objects correspond to relations (this is a simple ORM system)
 class Company(object):
+    """ ORM Company class.  Interface for the "company" table of the database
+
+        """
     def __init__(self, companyID =None, name=None, address=None, city=None,
                  state=None, phone=None, notes=None):
         self.companyID = companyID
@@ -126,10 +130,10 @@ class Company(object):
     @classmethod
     def get_by_name(cls,name):
         ## these get_by_name methods might need to be reworked?
-        """ Takes: a name string
-            Queries the database for the company corresponding to the name
-            string, and maps attributes ot local variables.
-            Returns: a new Company instance
+        ## the if/else statements especially
+        """ Takes a name string
+            Returns: a new Company instance populated from the database
+            
             """
         global cursor
         cursor = connection.cursor(mdb.cursors.DictCursor)
@@ -155,16 +159,17 @@ class Company(object):
     def delete_by_name(cls, name):
         """ Takes a name string
             Removes the corresponding company entry, if any, from the database
-            Returns nothing
+            Returns: nothing
+            
             """
         global cursor, connection
         cursor.execute("DELETE FROM company WHERE name=%s", (name))
         connection.commit()
    
     def write(self):
-        """ Takes: implied self
-            Writes all data in the company object to the database, and commits
-            Returns: Nothing
+        """ Writes the Company instance's values to the database
+            Returns: nothing
+            
             """
         global cursor
         cursor.execute("REPLACE INTO company "\
@@ -176,16 +181,15 @@ class Company(object):
 
     @staticmethod
     def get_all_companies():
-        """ Takes: nothing
-            Selects all names from the company table
-            Returns: all company names
+        """ Returns: a list of all company names
+
             """
         cursor.execute("SELECT name FROM company")
         return [x[0] for x in cursor.fetchall()]
 
     @staticmethod
     def delete_company_by_name(name):
-        """ Takes: a name string
+        """ Takes a name string
             Deletes the corresponding company from the database
             Returns: nothing
             """
@@ -194,6 +198,8 @@ class Company(object):
         
 
 class Contact(object):
+    """ ORM Contact class.  Interface for the "contact" table of the database
+        """
     def __init__(self, name=None, company_name=None, phone=None,
                  email=None, notes=None):
         self.name = name
@@ -203,6 +209,9 @@ class Contact(object):
         self.notes = notes
 
     def write(self):
+        """ Writes the Contact instance's values to the database
+            Returns: nothing
+            """
         cursor.execute("REPLACE INTO contact "\
                        "(company_name, name, phone, email, notes)"\
                        " VALUES (%s,%s,%s,%s,%s)",\
@@ -212,6 +221,9 @@ class Contact(object):
 
     @classmethod
     def get_by_name(cls,name):
+        """ Takes a name
+            Returns: a new Contact instance populated from the database
+            """
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM contact WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
@@ -231,8 +243,7 @@ class Contact(object):
 
     @staticmethod
     def get_all_contacts():
-        """ Takes: nothing
-            Returns: all names from the contact table
+        """ Returns: all names from the contact table
             """
         cursor.execute("SELECT name FROM contact")
         return cursor.fetchall()
@@ -241,7 +252,7 @@ class Contact(object):
     def delete_by_name(name):
         """ Takes a name string
             Removes the corresponding company entry, if any, from the database
-            Returns nothing
+            Returns: nothing
             """
         global cursor, connection
         cursor.execute("DELETE FROM contact WHERE name=%s", (name))
@@ -250,6 +261,9 @@ class Contact(object):
 
 
 class Project(object):
+    """ ORM Project class.  Interface for the "project" table of the database
+
+        """
     # todo: fix order
     def __init__(self, 
                  name =None, company_name =None, hourly_pay =None,
@@ -270,9 +284,11 @@ class Project(object):
         self.company_name = company_name
         self.notes = notes
 
-
-
     def write(self):
+        """ Writes the Project instance's values to the database
+            Returns: nothing
+            
+            """
         cursor.execute("REPLACE INTO project "\
                        "(name, company_name, contact_name, hourly_pay, "\
                        "quoted_hours, worked_hours, billed_hours, "\
@@ -289,6 +305,10 @@ class Project(object):
 
     @classmethod
     def get_by_name(cls,name):
+        """ Takes a project name
+            Returns: a new Project instance populated from the database
+            
+            """
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM project WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
@@ -315,27 +335,25 @@ class Project(object):
 
     @staticmethod
     def get_all_projects():
-        """ Takes: nothing
-            Returns: all names from the project table
+        """ Returns: all names from the project table
             """
         cursor.execute("SELECT name FROM project")
         return cursor.fetchall()
 
     @staticmethod
     def get_active_projects():
-        """ Takes: nothing
-            Returns: all names from the project table if the project is active
+        """ Returns: all names from the project table if the project is active
+
             """
         cursor.execute("SELECT name FROM project WHERE projectActive = True")
         return cursor.fetchall()
 
     
 class Session(object):
-    # needs a way to lookup last project_session_number *for that project* and
-    # assign the next number to a new session
-    
-    def __init__(self, 
-                 sessionID =None, company_name =None, project_name =None,
+    """ ORM Session class.  Interface for the "session" table of the database
+
+        """
+    def __init__(self, sessionID=None, company_name =None, project_name =None,
                  project_session_number=None, start_time =None, stop_time =None,
                  time =None, notes =None, git_commit =None):
         self.sessionID = sessionID
@@ -349,29 +367,40 @@ class Session(object):
         self.git_commit = git_commit
 
     def write(self):
+        """ Writes the values of the Session instance to the database
+            Returns: nothing
+
+            """
+        self.sessionID = self.make_sessionID()
+        
         cursor.execute("REPLACE INTO session "\
-                       "(id, company_name, project_name, start_time,"\
-                       "stop_time, time, notes, git_commit)"\
-                       " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",\
+                       "(sessionID, company_name, project_name,"\
+                       "project_session_number, start_time, stop_time, time, "\
+                       "notes, git_commit)"\
+                       " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
                         (self.sessionID, self.company_name, self.project_name,
                          self.project_session_number, self.start_time,
                          self.stop_time, self.time, self.notes,
                          self.git_commit))
         connection.commit()
 
-    def get_session_by_sessionID(self,sessionID):
-        ## implies a naming convention for sessions.... TODO!!!
-        ## -- projectname.session_number?
+    @classmethod
+    def get_session_by_sessionID(cls,sessionID):
+        """ Takes a sessionID
+            Returns: a new Session object populated from the database
+
+            """
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM session WHERE sessionID=%s",(sessionID))
         record_dict = cursor.fetchall()[0]
 
         new_session_obj = Session()
         if record_dict:
-            new_session_obj.sessionID = record_dict['id']
+            new_session_obj.sessionID = record_dict['sessionID']
             new_session_obj.company_name = record_dict['company_name']
             new_session_obj.project_name = record_dict['project_name']
-            new_session_obj.project_session_number = record_dict['project_session_number']
+            new_session_obj.project_session_number = record_dict[
+                'project_session_number']
             new_session_obj.start_time = record_dict['start_time']
             new_session_obj.stop_time = record_dict['stop_time']
             new_session_obj.time = record_dict['time']
@@ -383,3 +412,15 @@ class Session(object):
             
         cursor = connection.cursor()
         return new_session_obj
+
+    def make_sessionID(self):
+        """ Returns: a string in the form "project_name.4" where 4 would
+                     designate the 4th project session
+            
+            """
+        cursor.execute("SELECT MAX(project_session_number) FROM session WHERE "\
+                       "project_name=%s", (self.project_name))
+        max_number = cursor.fetchone()[0] + 1
+        self.project_session_number = max_number
+        return '.'.join([self.project_name, str(max_number)])
+
