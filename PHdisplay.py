@@ -47,6 +47,7 @@ def clear_frame(tab_frame):
 
 def company_save(frame):
     """ called when the save button is pressed on the company tab
+        
         """
     company = PHdb.Company()
     company.name = company_name_field.get()
@@ -65,6 +66,7 @@ def company_save(frame):
 
 def company_selected(name,frame):
     """ called by the select button on the company tab
+        
         """
     clear_frame(frame)
     company = PHdb.Company.get_by_name(name)
@@ -85,6 +87,7 @@ def company_selected(name,frame):
 
 def company_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
+        
         """
     # needs an 'are you sure' prompt
     PHdb.Company.delete_by_name(name)
@@ -102,6 +105,7 @@ def populate_company_listbox():
 
 def contact_selected(name, frame):
     """ called by the select button on the contact tab
+        
         """
     clear_frame(frame)
     #get contact company, update company tab
@@ -116,6 +120,7 @@ def contact_selected(name, frame):
 
 def contact_save():
     """ called by the save button on the contact tab
+        
         """
     # create a new contact object and write it to the db
     contact = PHdb.Contact()
@@ -134,6 +139,7 @@ def contact_save():
 
 def contact_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
+        
         """
     # needs an 'are you sure' prompt
     PHdb.Contact.delete_by_name(name)
@@ -225,6 +231,7 @@ def update_project_tab(**kwargs):
 
 def project_delete_selected(name, frame):
     """ called by the 'delete' button on the company tab
+        
         """
     # needs an 'are you sure' prompt
     PHdb.Project.delete_by_name(name)
@@ -304,6 +311,7 @@ def update_session_tab(**kwaargs):
 # session tab session listbox
 def session_session_delete_selected(name, frame):
     """ called by the 'delete' button on the session tab
+        
         """
     # needs an 'are you sure' prompt
     PHdb.Session.delete_by_name(name)

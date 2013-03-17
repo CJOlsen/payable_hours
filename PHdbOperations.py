@@ -35,6 +35,7 @@ cursor = None
 def connectDB():
     """ Tries to create a connection to the MySQL database.
         Returns: connection, cursor (which are None if the con fails)
+        
         """
     global connection, cursor
     try:
@@ -52,6 +53,7 @@ def connectDB():
 def disconnectDB():
     """ Disconnects from the database.
         Returns: nothing
+        
         """
     if connection:
         connection.commit()
@@ -62,6 +64,7 @@ def create_table_structure():
     """ Needs a connection with an empty database and sufficient privileges.
         Creates the table structure for the program (subject to change.)
         Returns: nothing
+        
         """
     global connection, cursor
     cursor.execute("CREATE TABLE company ("\
@@ -192,6 +195,7 @@ class Company(object):
         """ Takes a name string
             Deletes the corresponding company from the database
             Returns: nothing
+            
             """
         company=Company()
         company.delete_by_name(name)
@@ -199,6 +203,7 @@ class Company(object):
 
 class Contact(object):
     """ ORM Contact class.  Interface for the "contact" table of the database
+    
         """
     def __init__(self, name=None, company_name=None, phone=None,
                  email=None, notes=None):
@@ -211,6 +216,7 @@ class Contact(object):
     def write(self):
         """ Writes the Contact instance's values to the database
             Returns: nothing
+            
             """
         cursor.execute("REPLACE INTO contact "\
                        "(company_name, name, phone, email, notes)"\
@@ -223,6 +229,7 @@ class Contact(object):
     def get_by_name(cls,name):
         """ Takes a name
             Returns: a new Contact instance populated from the database
+            
             """
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM contact WHERE name=%s",(name))
@@ -244,6 +251,7 @@ class Contact(object):
     @staticmethod
     def get_all_contacts():
         """ Returns: all names from the contact table
+    
             """
         cursor.execute("SELECT name FROM contact")
         return cursor.fetchall()
@@ -253,6 +261,7 @@ class Contact(object):
         """ Takes a name string
             Removes the corresponding company entry, if any, from the database
             Returns: nothing
+            
             """
         global cursor, connection
         cursor.execute("DELETE FROM contact WHERE name=%s", (name))
@@ -315,18 +324,18 @@ class Project(object):
 
         new_project_obj = Project()
         if record_dict:
-            new_project_obj.name           = record_dict['name']
-            new_project_obj.company_name   = record_dict['company_name']
-            new_project_obj.hourly_pay     = record_dict['hourly_pay']
-            new_project_obj.quoted_hours   = record_dict['quoted_hours']
-            new_project_obj.worked_hours   = record_dict['worked_hours']
-            new_project_obj.billed_hours   = record_dict['billed_hours']
+            new_project_obj.name = record_dict['name']
+            new_project_obj.company_name = record_dict['company_name']
+            new_project_obj.hourly_pay = record_dict['hourly_pay']
+            new_project_obj.quoted_hours = record_dict['quoted_hours']
+            new_project_obj.worked_hours = record_dict['worked_hours']
+            new_project_obj.billed_hours = record_dict['billed_hours']
             new_project_obj.total_invoiced = record_dict['total_invoiced']
-            new_project_obj.total_paid     = record_dict['total_paid']
-            new_project_obj.money_owed     = record_dict['money_owed']
+            new_project_obj.total_paid = record_dict['total_paid']
+            new_project_obj.money_owed = record_dict['money_owed']
             new_project_obj.project_active = record_dict['project_active']
-            new_project_obj.contact_name   = record_dict['contact_name']
-            new_project_obj.notes          = record_dict['notes']
+            new_project_obj.contact_name = record_dict['contact_name']
+            new_project_obj.notes = record_dict['notes']
         else:
             print 'there was an error'
 
@@ -336,6 +345,7 @@ class Project(object):
     @staticmethod
     def get_all_projects():
         """ Returns: all names from the project table
+            
             """
         cursor.execute("SELECT name FROM project")
         return cursor.fetchall()
@@ -343,7 +353,7 @@ class Project(object):
     @staticmethod
     def get_active_projects():
         """ Returns: all names from the project table if the project is active
-
+            
             """
         cursor.execute("SELECT name FROM project WHERE projectActive = True")
         return cursor.fetchall()
@@ -353,6 +363,7 @@ class Project(object):
         """ Takes a name string
             Removes the corresponding project entry, if any, from the database
             Returns: nothing
+            
             """
         global cursor, connection
         cursor.execute("DELETE FROM project WHERE name=%s", (name))
@@ -361,7 +372,7 @@ class Project(object):
     
 class Session(object):
     """ ORM Session class.  Interface for the "session" table of the database
-
+        
         """
     def __init__(self, sessionID=None, company_name =None, project_name =None,
                  project_session_number=None, start_time =None, stop_time =None,
@@ -379,7 +390,7 @@ class Session(object):
     def write(self):
         """ Writes the values of the Session instance to the database
             Returns: nothing
-
+            
             """
         self.sessionID = self.make_sessionID()
         
@@ -398,7 +409,7 @@ class Session(object):
     def get_session_by_sessionID(cls,sessionID):
         """ Takes a sessionID
             Returns: a new Session object populated from the database
-
+            
             """
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM session WHERE sessionID=%s",(sessionID))
