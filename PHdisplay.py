@@ -25,18 +25,32 @@ import sys
 import PHdbOperations as PHdb
 import wx
 
+##from wx.lib.pubsub import setupkwargs
+##from wx.lib.pubsub import pub
+
 
 #connect to database
 connection,cursor = PHdb.connectDB()
 
-###############################################################################
-#### LOGIC (the Controller in MVC)
-###############################################################################
+#################################################################################
+###### wxpython publish-subscribe broker (PubSub)
+#################################################################################
+##
+##class SomeReceiver(object):
+##    def __init__(self):
+##        pub.subscribe(self.__onObjectAdded, 'object.added')
+##
+##    def __onObjectAdded(self, data, extra1, extra2=None):
+##        print 'Object', repr(data), 'is added'
+##        print extra1
+##        if extra2:
+##            print extra2
+
 
 
 
 ################################################################################
-#### BUILD THE DISPLAY (the V in MVC)
+#### wxpython code
 ################################################################################
 
 
@@ -46,10 +60,30 @@ class NotebookPanel(wx.Panel):
         """
     def __init__(self, parent, name):
         wx.Panel.__init__(self, parent=parent)
-
         sizer = wx.BoxSizer(wx.VERTICAL)
-        #label = wx.StaticText(self, label="this is a label")
-        #sizer.Add(label)
+
+        self.observers = []
+
+    ## Set up message passing between the tabs
+    def add_observer(self, observer):
+        assert type(observer) is NotebookPanel
+        self.observers.append(observer)
+
+    def remove_observer(self, observer):
+        assert type(observer) is NotebookPanel
+        self.observers.remove(observer)
+        
+    def send_message(self, message):
+        """ Must be overridden by instance.
+            
+            """
+        return NotImplementedError
+
+    def receive_message(self, message):
+        """ Must be overridden by instance.
+
+            """
+        return NotImplementedError
 
 
 
@@ -59,9 +93,9 @@ class CompanyPanel(NotebookPanel):
         """
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent, name= "Company")
-
-        self.current_selected = 0
-        #self.SetBackgroundColour('#4f5049')
+        
+        self.current_selected = 0 #keeps track of selected listbox item
+        self.current_company = None
         
         self.BuildUI()
         self.Show()
@@ -69,7 +103,10 @@ class CompanyPanel(NotebookPanel):
 
 
     def BuildUI(self):
-        """ panels are nested to create layout
+        """ Panels are nested to create layout.  Logic is handled in the
+            On*** definitions which recieve and handle events.  Elements that
+            need to be accessible outside of this definition are prepended
+            self.<element>
 
             """
         
@@ -97,21 +134,21 @@ class CompanyPanel(NotebookPanel):
         left_sizer.Layout()
         
         # middle panel: text fields and clear button
-        txt_name = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
-        txt_address = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
-        txt_city = wx.TextCtrl(middle_panel, wx.ID_ANY, "")        
-        txt_state = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
-        txt_phone = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
-        txt_notes = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
+        self.txt_name = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
+        self.txt_address = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
+        self.txt_city = wx.TextCtrl(middle_panel, wx.ID_ANY, "")        
+        self.txt_state = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
+        self.txt_phone = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
+        self.txt_notes = wx.TextCtrl(middle_panel, wx.ID_ANY, "")
         btn_field_clear = wx.Button(middle_panel, 2, "Clear", (13, 200))
 
         middle_sizer = wx.BoxSizer(wx.VERTICAL)
-        middle_sizer.Add(txt_name, 0, wx.ALL, 5)
-        middle_sizer.Add(txt_address, 0, wx.ALL, 5)
-        middle_sizer.Add(txt_city, 0, wx.ALL, 5)
-        middle_sizer.Add(txt_state, 0, wx.ALL, 5)
-        middle_sizer.Add(txt_phone, 0, wx.ALL, 5)
-        middle_sizer.Add(txt_notes, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_name, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_address, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_city, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_state, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_phone, 0, wx.ALL, 5)
+        middle_sizer.Add(self.txt_notes, 0, wx.ALL, 5)
         middle_sizer.Add(btn_field_clear, 0, wx.ALL, 10)
         middle_sizer.Layout()
 
@@ -130,7 +167,7 @@ class CompanyPanel(NotebookPanel):
         the_list = PHdb.Company.get_all_companies()
                 # listbox's self.foo because it's needed elsewhere
         self.lstbx_companies = wx.ListBox(right_panel,  26, wx.DefaultPosition,
-                                     (175, 200), the_list, wx.LB_SINGLE)
+                                     (175, 175), the_list, wx.LB_SINGLE)
         self.lstbx_companies.SetSelection(0)
 
         right_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -155,39 +192,86 @@ class CompanyPanel(NotebookPanel):
         
         self.SetSizerAndFit(main_sizer)
 
+    def update_listbox(self):
+        self.lstbx_companies.Set(PHdb.Company.get_all_companies())
+        
+    
+    ####################
+    ## Event Handling ##
+    ####################    
     def OnSave(self, event):
         """ Saves the current fields into a new company or updates a current
             company if the name already exists.
 
             """
-        pass
+
+        # don't save companies without names (make a dialog?)
+        if len(self.txt_name.GetValue()) == 0:
+            print 'error, no name'
+            pass
+        
+        # modify/create Company object for PHdbOperations.py
+        if not self.current_company:
+            self.current_company = PHdb.Company()
+        self.current_company.name = self.txt_name.GetValue()
+        self.current_company.address = self.txt_address.GetValue()
+        self.current_company.city = self.txt_city.GetValue()
+        self.current_company.state = self.txt_state.GetValue()
+        self.current_company.phone = self.txt_phone.GetValue()
+        self.current_company.notes = self.txt_notes.GetValue()
+
+        # saving is handled by PHdbOperations.py
+        self.current_company.write()
+        self.update_listbox()
+        
 
     def OnClear(self, event):
         """ Just clears the fields.  Doesn't delete the company.
 
             """
-        pass
+        # just clear everything out
+        self.txt_name.SetValue("")
+        self.txt_address.SetValue("")
+        self.txt_city.SetValue("")
+        self.txt_state.SetValue("")
+        self.txt_phone.SetValue("")
+        self.txt_notes.SetValue("")
+        
 
     def OnSelect(self, event):
         """ Bound to the select button.  populates the fields with the
             current selection's info.
 
             """
-        print self.lstbx_companies.GetString(self.current_selected)
+        # get new Company object from PHdbOperations.py
+        name = self.lstbx_companies.GetString(self.current_selected)
+        self.current_company = PHdb.Company.get_by_name(name)
+
+        # update listbox values with new company
+        self.txt_name.SetValue(self.current_company.name)
+        self.txt_address.SetValue(self.current_company.address)
+        self.txt_city.SetValue(self.current_company.city)
+        self.txt_state.SetValue(self.current_company.state)
+        self.txt_phone.SetValue(self.current_company.phone)
+        self.txt_notes.SetValue(self.current_company.notes)
 
     def OnCompanySelected(self, event):
         """ Bound to the company listbox.  Updates the internal variable
-            current_selected
+            current_selected (doesn't update the locally stored company object)
 
             """
         self.current_selected = event.GetSelection()
-        print self.current_selected
+        
 
     def OnDelete(self, event):
         """ Deletes the current selection *from the database*
 
             """
-        pass
+        # could use an "are you sure?" dialog
+        # deletion handled by PHdbOperations.py
+        name = self.lstbx_companies.GetString(self.current_selected)
+        PHdb.Company.delete_by_name(name)
+        self.update_listbox()
     
  
         
