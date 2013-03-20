@@ -86,6 +86,97 @@ class NotebookPanel(wx.Panel):
         return NotImplementedError
 
 
+class EntrySubPanel(wx.Panel):
+    """ This is a subpanel that handles the creation and management of
+        multiple text fields and their labels, and their buttons.
+        Fields can be accessed through their names - but not directly!!!
+
+        The dictionary of dictionaries may not be the optimal data structure.
+
+        """
+
+    def __init__(self, parent, names=None):
+        #wx.Panel.__init__(self, parent=parent)
+        assert type(names) is list
+        self.names = names
+        self.fields = {}
+        self.buttons = {}
+
+        count = 0
+        for name in names:
+            assert type(name) is str
+            self.fields[name] = {'label':None, 'txt_field':None,'index':count}
+            count += 1
+
+        self.BuildUI()
+
+    def BuildUI(self):
+        """ This creates a column of labels corresponding to the list of names
+            as well as a column of TextCtrl fields and save/clear buttons at the
+            bottom.
+
+            """
+        labels_panel = wx.Panel(self)
+        textctrls_panel = wx.Panel(self)
+        buttons_panel = wx.Panel(self)
+
+        # make the labels and text entry fields
+        for name in names:
+            self.fields[name]['label'] = wx.StaticText(labels_panel,
+                                                       wx.ID_ANY,
+                                                       ''.join([name, ':']))
+            
+            self.fields[name]['txt_field'] = wx.TextCtrl(textctrls_panel,
+                                                         wx.ID_ANY,
+                                                         "",
+                                                         size=(200,25))
+        
+        # make the buttons
+        self.buttons['save'] = wx.Button(buttons_panel,
+                                         1,
+                                         "Save",
+                                         size=(13,200))
+        self.buttons['clear'] = wx.Button(buttons_panel,
+                                          2,
+                                          "Clear",
+                                          size=(13,200))
+
+        # let the parent class handle the button events
+        self.Bind(wx.EVT_BUTTON, parent.OnSave, id=1)
+        self.Bind(wx.EVT_BUTTON, parent.OnClear, id=2)
+
+        # make the sizers
+        labels_sizer = wx.BoxSizer(VERTICAL)
+        textctrls_sizer = wx.BoxSizer(VERTICAL)
+        buttons_sizer = wx.BoxSizer(HORIZONTAL)
+
+        # populate the sizers
+        for name in names:
+            labels_sizer.Add(self.fields[name]['label'],
+                             0,
+                             wx.ALL,
+                             10)
+            
+            textctrls_sizer.Add(self.fields[name]['txt_field'],
+                                0,
+                                wx.ALL,
+                                10)
+
+        buttons_sizer.Add(buttons['save'], 0, wx.ALL, 5)
+        buttons_sizer.Add(buttons['clear'], 0, wx.ALL, 5)
+
+        not_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        main_sub_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        not_buttons_sizer.Add(labels_sizer, 0, wx.ALL, 0)
+        not_buttons_sizer.Add(textctrls_sizer, 0, wx.ALL, 0)
+
+        main_sub_sizer.Add(not_buttons_sizer, 0, wx.ALL, 0)
+        main_sub_sizer.Add(buttons_sizer, 0, wx.ALL, 0)
+
+        self.SetSizerAndFit(main_sub_sizer)
+        main_sub_sizer.Layout()    
+
 
 class CompanyPanel(NotebookPanel):
     """ The company tab for the notebook.
