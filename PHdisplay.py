@@ -1,22 +1,13 @@
 # Payable Hours
 # Author: Christopher Olsen
 #
-# Copyright Notice: Copyright 2012 Christopher Olsen
-# License: GNU General Public License, v3 (see LICENSE.txt)
+# Copyright Notice: Copyright 2012, 2013 Christopher Olsen
+# License: None.  All rights reserved.
 #
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Once this project reaches maturity it will likely be released into the
+# wild but for now I'm removing the license to relieve myself from the fears
+# of being prematurely forked.
+
 
 ## *** THIS FILE HOLDS THE DISPLAY AND LOGIC CODE, FOR MYSQL INTERFACE SEE 
 ##     PHdbOperations.py ***
@@ -25,28 +16,8 @@ import sys
 import PHdbOperations as PHdb
 import wx
 
-##from wx.lib.pubsub import setupkwargs
-##from wx.lib.pubsub import pub
-
-
-#connect to database
+# connect to database
 connection,cursor = PHdb.connectDB()
-
-#################################################################################
-###### wxpython publish-subscribe broker (PubSub)
-#################################################################################
-##
-##class SomeReceiver(object):
-##    def __init__(self):
-##        pub.subscribe(self.__onObjectAdded, 'object.added')
-##
-##    def __onObjectAdded(self, data, extra1, extra2=None):
-##        print 'Object', repr(data), 'is added'
-##        print extra1
-##        if extra2:
-##            print extra2
-
-
 
 
 ################################################################################
@@ -58,45 +29,98 @@ class NotebookPanel(wx.Panel):
     """ This is the Class for notebook tabs.
 
         """
-    def __init__(self, parent, name):
+    def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
-        sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.observers = []
+        self.parent = parent
+        self.current_orm_object = NotImplementedError
+        self.current_selected = 0
+        self.fields = NotImplementedError
 
-    ## Set up message passing between the tabs
-    def add_observer(self, observer):
-        assert type(observer) is NotebookPanel
-        self.observers.append(observer)
+    def update_listbox(self):
+        new_list = self.current_orm_object.get_all_names()
+        self.listbox_subpanel.listbox.Set(new_list)
+    
+    ####################
+    ## Event Handling ##
+    ####################
+    def OnSelect(self, event):
+        """ Bound to the Select button in the listbox subpanel
 
-    def remove_observer(self, observer):
-        assert type(observer) is NotebookPanel
-        self.observers.remove(observer)
+            """
+        # get the selected text from the listbox (which is buried)
+        name = self.listbox_subpanel.listbox.GetString(self.current_selected)
+
+        # get a new ORM object from PHdb*.py by calling a @classmethod
+        self.current_orm_object = self.current_orm_object.get_by_name(name)
+
+        # step through the text boxes and update them
+        for field in self.fields:
+            new_value = self.current_orm_object.__dict__[field]
+            if new_value is not None:
+                self.entry_subpanel.SetField(field, new_value)
+            else:
+                self.entry_subpanel.SetField(field, '')
+
+
+    def OnClear(self, event):
+        """ Bound to the Clear button in the entry subpanel
+
+            """
+        # step through the fields, clearing them along the way
+        for field in self.fields:
+            self.entry_subpanel.SetField(field, '')
+
+    def OnSave(self, event):
+        """ Bound to the Save button in the entry subpanel
+
+            """
+        # don't save companies without names (make a dialog?)
+        if len(self.entry_subpanel.txt_name.GetValue()) == 0:
+            print 'error, no name'
+            return error
         
-    def send_message(self, message):
-        """ Must be overridden by instance.
+        for field in self.fields:
+            value = self.entry_subpanel.GetField(field)
+            self.current_orm_object.set_attr(field, value)
+
+        # saving is handled by PHdbOperations.py
+        self.current_company.write()
+        self.update_listbox()
+
+    def OnDelete(self, event):
+        """ Bound to the Delete button in the listbox subpanel
+
+            """
+        # get the selected text from the listbox (which is buried)
+        name = self.listbox_subpanel.listbox.GetString(self.current_selected)        
+        self.current_orm_object.delete_by_name(name)
+        self.update_listbox()
+
+    def OnListboxSelected(self, event):
+        """ Bound to the listbox, called when a new member of the listbox
+            is selected.
+
+            """
+        self.current_selected = event.GetSelection()
+        
             
-            """
-        return NotImplementedError
-
-    def receive_message(self, message):
-        """ Must be overridden by instance.
-
-            """
-        return NotImplementedError
-
 
 class EntrySubPanel(wx.Panel):
     """ This is a subpanel that handles the creation and management of
         multiple text fields and their labels, and their buttons.
-        Fields can be accessed through their names - but not directly!!!
+        Fields can be accessed through their names - but not directly.
 
         The dictionary of dictionaries may not be the optimal data structure.
+        Should be a list of dictionaries using the list index for ordering.
 
         """
 
     def __init__(self, parent, names=None):
-        #wx.Panel.__init__(self, parent=parent)
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+
+        # create some containers for the new labels and text boxes
         assert type(names) is list
         self.names = names
         self.fields = {}
@@ -116,80 +140,155 @@ class EntrySubPanel(wx.Panel):
             bottom.
 
             """
+
+        ########################################################################
+        ######## ****** artifact showing up on upper left of screen****#########
+        ########################################################################
+        main_sub_sizer = wx.BoxSizer(wx.VERTICAL)
+        
         labels_panel = wx.Panel(self)
         textctrls_panel = wx.Panel(self)
         buttons_panel = wx.Panel(self)
 
+        # make the sizers
+        labels_sizer = wx.BoxSizer(wx.VERTICAL)
+        textctrls_sizer = wx.BoxSizer(wx.VERTICAL)
+        buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
         # make the labels and text entry fields
-        for name in names:
-            self.fields[name]['label'] = wx.StaticText(labels_panel,
+        for name in self.names:
+            self.fields[name]['label'] = wx.StaticText(self,
                                                        wx.ID_ANY,
                                                        ''.join([name, ':']))
             
-            self.fields[name]['txt_field'] = wx.TextCtrl(textctrls_panel,
+            self.fields[name]['txt_field'] = wx.TextCtrl(self,
                                                          wx.ID_ANY,
                                                          "",
                                                          size=(200,25))
         
         # make the buttons
-        self.buttons['save'] = wx.Button(buttons_panel,
-                                         1,
-                                         "Save",
-                                         size=(13,200))
-        self.buttons['clear'] = wx.Button(buttons_panel,
-                                          2,
-                                          "Clear",
-                                          size=(13,200))
+        self.buttons['save'] = wx.Button(self, 1, "Save", size=(100,25))
+        self.buttons['clear'] = wx.Button(self, 2, "Clear", size=(100,25))
 
         # let the parent class handle the button events
-        self.Bind(wx.EVT_BUTTON, parent.OnSave, id=1)
-        self.Bind(wx.EVT_BUTTON, parent.OnClear, id=2)
-
-        # make the sizers
-        labels_sizer = wx.BoxSizer(VERTICAL)
-        textctrls_sizer = wx.BoxSizer(VERTICAL)
-        buttons_sizer = wx.BoxSizer(HORIZONTAL)
+        self.Bind(wx.EVT_BUTTON, self.parent.OnSave, id=1)
+        self.Bind(wx.EVT_BUTTON, self.parent.OnClear, id=2)
 
         # populate the sizers
-        for name in names:
+        for name in self.names:
             labels_sizer.Add(self.fields[name]['label'],
-                             0,
-                             wx.ALL,
-                             10)
+                             1,
+                             wx.ALL | wx.ALIGN_LEFT,
+                             3)
             
             textctrls_sizer.Add(self.fields[name]['txt_field'],
-                                0,
-                                wx.ALL,
-                                10)
+                                1,
+                                wx.ALL | wx.ALIGN_LEFT,
+                                3)
 
-        buttons_sizer.Add(buttons['save'], 0, wx.ALL, 5)
-        buttons_sizer.Add(buttons['clear'], 0, wx.ALL, 5)
+        buttons_sizer.Add(self.buttons['save'], 0, wx.ALL, 5)
+        buttons_sizer.Add(self.buttons['clear'], 0, wx.ALL, 5)
 
         not_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        main_sub_sizer = wx.BoxSizer(wx.VERTICAL)
+        
+        not_buttons_sizer.Add(labels_sizer, 1, wx.EXPAND, 1)
+        not_buttons_sizer.Add(textctrls_sizer, 0, wx.EXPAND, 0)
 
-        not_buttons_sizer.Add(labels_sizer, 0, wx.ALL, 0)
-        not_buttons_sizer.Add(textctrls_sizer, 0, wx.ALL, 0)
+        main_sub_sizer.Add(not_buttons_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT, 1)
+        main_sub_sizer.Add(buttons_sizer, 1, wx.ALIGN_CENTER, 1)
+        
+        self.SetSizer(main_sub_sizer)
 
-        main_sub_sizer.Add(not_buttons_sizer, 0, wx.ALL, 0)
-        main_sub_sizer.Add(buttons_sizer, 0, wx.ALL, 0)
+    def SetField(self, field_name, value):
+        self.fields[field_name]['txt_field'].SetValue(value)
 
-        self.SetSizerAndFit(main_sub_sizer)
-        main_sub_sizer.Layout()    
+    def GetField(self, field_name):
+        return self.fields[field_name]['txt_field'].GetValue()
+        
 
+class ListboxSubPanel(wx.Panel):
+    """ Subpanel that handles the creation of a listbox and its corresponding
+        buttons.
 
+        """
+    def __init__(self, parent, list_type=None):
+        assert list_type in ['companies', 'contacts', 'projects', 'sessions',
+                             None]
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+        self.list_type = list_type
+
+        self.BuildUI()
+
+    def BuildUI(self):
+
+        listbox_subpanel = wx.Panel(self.Parent)
+        listbox_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        buttons_panel = wx.Panel(self.parent)
+        buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        btn_lstbx_select = wx.Button(self, 3, "Select", (22, 22))
+        btn_lstbx_delete = wx.Button(self, 4, "Delete", (22, 22))
+
+        buttons_sizer.Add(btn_lstbx_select, 0,wx.ALL, 5)
+        buttons_sizer.Add(btn_lstbx_delete, 0, wx.ALL, 5)
+        #buttons_sizer.Layout()
+
+            # label and listbox
+        lbl_listbox = wx.StaticText(self,
+                                    wx.ID_ANY,
+                                    ''.join([self.list_type, ':']))
+
+        # get the list depending on type of listbox
+        if self.list_type == 'companies':
+            the_list = PHdb.Company.get_all_companies()
+            lb_height = 150
+            self.Bind(wx.EVT_LISTBOX, self.parent.OnListboxSelected, id=26)
+        elif self.list_type == 'contacts':
+            the_list = PHdb.Contact.get_all_contacts()
+            lb_height = 125
+            self.Bind(wx.EVT_LISTBOX, self.parent.OnListboxSelected, id=26)
+        elif self.list_type == 'projects':
+            the_list = PHdb.Project.get_all_projects()
+        elif self.list_type == 'sessions':
+            the_list = PHdb.Session.get_all_sessions()
+        else:
+            return Exception # could be more specific
+
+        
+        self.listbox = wx.ListBox(self,
+                                  26,
+                                  wx.DefaultPosition,
+                                  (175, lb_height),
+                                  the_list,
+                                  wx.LB_SINGLE)
+        self.listbox.SetSelection(0)
+
+        listbox_sizer.Add(lbl_listbox, 0, wx.ALL, 5)
+        listbox_sizer.Add(self.listbox, 0, wx.ALL, 5)
+        listbox_sizer.Add(buttons_sizer, 0, wx.ALL, 5)
+
+        self.SetSizer(listbox_sizer)
+        
+        # bind buttons and events
+        self.Bind(wx.EVT_BUTTON, self.parent.OnSelect, id=3)
+        self.Bind(wx.EVT_BUTTON, self.parent.OnDelete, id=4)
+        #self.Bind(wx.EVT_LISTBOX, self.parent.OnCompanySelected, id=26)
+
+    def UpdateListbox(self):
+        self.listbox.Set(self.current_orm_object.get_all_names())
+        
 class CompanyPanel(NotebookPanel):
     """ The company tab for the notebook.
 
         """
     def __init__(self, parent):
-        NotebookPanel.__init__(self, parent= parent, name= "Company")
-        
-        self.current_selected = 0 #keeps track of selected listbox item
-        self.current_company = None
-        
+        NotebookPanel.__init__(self, parent= parent)
+
+        self.current_orm_object = PHdb.Company(None)
+        self.fields = ['name', 'address', 'city', 'state', 'phone', 'notes']
         self.BuildUI()
-        self.Show()
 
     def BuildUI(self):
         """ Panels are nested to create layout.  Logic is handled in the
@@ -197,191 +296,32 @@ class CompanyPanel(NotebookPanel):
             need to be accessible outside of this definition are prepended
             self.<element>
 
-            """
-        left_panel = wx.Panel(self)
-        middle_panel = wx.Panel(self)
-        right_panel = wx.Panel(self)
-        
-        # left panel: labels and save button
-        lbl_name = wx.StaticText(left_panel, wx.ID_ANY, "Name:")
-        lbl_address = wx.StaticText(left_panel, wx.ID_ANY, "Address:")
-        lbl_city = wx.StaticText(left_panel, wx.ID_ANY, "City:")
-        lbl_state = wx.StaticText(left_panel, wx.ID_ANY, "State:")
-        lbl_phone = wx.StaticText(left_panel, wx.ID_ANY, "Phone:")
-        lbl_notes = wx.StaticText(left_panel, wx.ID_ANY, "Notes:")
-        btn_field_save = wx.Button(left_panel, 1, "Save", (50, 13))
-
-        left_sizer = wx.BoxSizer(wx.VERTICAL)
-        left_sizer.Add(item= lbl_name,
-                       proportion= 0, # use ratios between elements
-                       flag= wx.ALL, # border, alignment and sizing changes
-                       border= 10,
-                       userData= None) # generally not used
-        left_sizer.Add(lbl_address, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_city, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_state, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_phone, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_notes, 0, wx.ALL, 10)
-        left_sizer.Add(btn_field_save, 0, wx.ALL, 10)
-        left_sizer.Layout()
-        
-        # middle panel: text fields and clear button
-        self.txt_name = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_address = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_city = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))        
-        self.txt_state = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_phone = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_notes = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        btn_field_clear = wx.Button(middle_panel, 2, "Clear", (13, 200))
-
-        middle_sizer = wx.BoxSizer(wx.VERTICAL)
-        middle_sizer.Add(self.txt_name, 0, wx.ALL | wx.EXPAND, 5)
-        middle_sizer.Add(self.txt_address, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_city, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_state, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_phone, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_notes, 0, wx.ALL, 5)
-        middle_sizer.Add(btn_field_clear, 0, wx.ALL, 10)
-        middle_sizer.Layout()
-
-        # right panel:
-            # listbox buttons
-        listbox_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_lstbx_select = wx.Button(right_panel, 3, "Select", (22, 22))
-        btn_lstbx_delete = wx.Button(right_panel, 4, "Delete", (22, 22))
-
-        listbox_buttons_sizer.Add(btn_lstbx_select, 0,wx.ALL, 5)
-        listbox_buttons_sizer.Add(btn_lstbx_delete, 0, wx.ALL, 5)
-        listbox_buttons_sizer.Layout()
-
-            # label and listbox
-        lbl_listbox = wx.StaticText(right_panel, wx.ID_ANY, "Companies:")
-        the_list = PHdb.Company.get_all_companies()
-                # listbox's self.foo because it's needed elsewhere
-        self.lstbx_companies = wx.ListBox(right_panel,  26, wx.DefaultPosition,
-                                     (175, 175), the_list, wx.LB_SINGLE)
-        self.lstbx_companies.SetSelection(0)
-
-        right_sizer = wx.BoxSizer(wx.VERTICAL)
-        right_sizer.Add(lbl_listbox, 0, wx.ALL, 5)
-        right_sizer.Add(self.lstbx_companies, 0, wx.ALL, 5)
-        right_sizer.Add(listbox_buttons_sizer, 0, wx.ALL, 5)
-        right_sizer.Layout()
-
-        # bind buttons and events
-
-        self.Bind(wx.EVT_BUTTON, self.OnSave, id=1)
-        self.Bind(wx.EVT_BUTTON, self.OnClear, id=2)
-        self.Bind(wx.EVT_BUTTON, self.OnSelect, id=3)
-        self.Bind(wx.EVT_BUTTON, self.OnDelete, id=4)
-        self.Bind(wx.EVT_LISTBOX, self.OnCompanySelected, id=26)
-        
-        # add the columns to the main tab frame
+            """ 
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        main_sizer.Add(left_panel)
-        main_sizer.Add(middle_panel) # add a ,2 for spacing
-        main_sizer.Add(right_panel, flag=wx.LEFT, border=45)
+
+        self.entry_subpanel = EntrySubPanel(self, self.fields)
+        self.listbox_subpanel = ListboxSubPanel(self, 'companies')
         
-        self.SetSizerAndFit(main_sizer)
-        main_sizer.Layout()
+        main_sizer.Add(self.entry_subpanel)
+        main_sizer.Add(self.listbox_subpanel)
 
-    def update_listbox(self):
-        self.lstbx_companies.Set(PHdb.Company.get_all_companies())
-        
-    
-    ####################
-    ## Event Handling ##
-    ####################    
-    def OnSave(self, event):
-        """ Saves the current fields into a new company or updates a current
-            company if the name already exists.
+        self.SetSizer(main_sizer)
 
-            """
-
-        # don't save companies without names (make a dialog?)
-        if len(self.txt_name.GetValue()) == 0:
-            print 'error, no name'
-            pass
-        
-        # modify/create Company object for PHdbOperations.py
-        if not self.current_company:
-            self.current_company = PHdb.Company()
-        self.current_company.name = self.txt_name.GetValue()
-        self.current_company.address = self.txt_address.GetValue()
-        self.current_company.city = self.txt_city.GetValue()
-        self.current_company.state = self.txt_state.GetValue()
-        self.current_company.phone = self.txt_phone.GetValue()
-        self.current_company.notes = self.txt_notes.GetValue()
-
-        # saving is handled by PHdbOperations.py
-        self.current_company.write()
-        self.update_listbox()
-        
-
-    def OnClear(self, event):
-        """ Just clears the fields.  Doesn't delete the company.
-
-            """
-        # just clear everything out
-        self.txt_name.SetValue("")
-        self.txt_address.SetValue("")
-        self.txt_city.SetValue("")
-        self.txt_state.SetValue("")
-        self.txt_phone.SetValue("")
-        self.txt_notes.SetValue("")
-        
-
-    def OnSelect(self, event):
-        """ Bound to the select button.  populates the fields with the
-            current selection's info.
-
-            """
-        # get new Company object from PHdbOperations.py
-        name = self.lstbx_companies.GetString(self.current_selected)
-        self.current_company = PHdb.Company.get_by_name(name)
-
-        # update listbox values with new company
-        self.txt_name.SetValue(self.current_company.name)
-        self.txt_address.SetValue(self.current_company.address)
-        self.txt_city.SetValue(self.current_company.city)
-        self.txt_state.SetValue(self.current_company.state)
-        self.txt_phone.SetValue(self.current_company.phone)
-        self.txt_notes.SetValue(self.current_company.notes)
-
-    def OnCompanySelected(self, event):
-        """ Bound to the company listbox.  Updates the internal variable
-            current_selected (doesn't update the locally stored company object)
-
-            """
-        self.current_selected = event.GetSelection()
-        
-
-    def OnDelete(self, event):
-        """ Deletes the current selection *from the database*
-
-            """
-        # could use an "are you sure?" dialog
-        # deletion handled by PHdbOperations.py
-        name = self.lstbx_companies.GetString(self.current_selected)
-        PHdb.Company.delete_by_name(name)
-        self.update_listbox()
-    
  
-        
-
 class ContactPanel(NotebookPanel):
     """ The contact tab for the notebook.
 
         """
     def __init__(self, parent):
-        NotebookPanel.__init__(self, parent= parent, name= "Contact")
+        NotebookPanel.__init__(self, parent= parent)
 
         self.current_selected = 0 #keeps track of selected listbox item
-        self.current_company = None
+        self.current_orm_object = PHdb.Contact(None)
+
+        self.fields = ['name', 'company', 'phone', 'email', 'notes']
         
         self.BuildUI()
         self.Show()
-
 
     def BuildUI(self):
         """ Panels are nested to create layout.  Logic is handled in the
@@ -390,190 +330,36 @@ class ContactPanel(NotebookPanel):
             self.<element>
 
             """
-        left_panel = wx.Panel(self)
-        middle_panel = wx.Panel(self)
-        right_panel = wx.Panel(self)
-        
-        # left panel: labels and save button
-        lbl_name = wx.StaticText(left_panel, wx.ID_ANY, "Name:")
-        lbl_company = wx.StaticText(left_panel, wx.ID_ANY, "Company:")
-        lbl_phone = wx.StaticText(left_panel, wx.ID_ANY, "Phone:")
-        lbl_email = wx.StaticText(left_panel, wx.ID_ANY, "Email:")
-        lbl_notes = wx.StaticText(left_panel, wx.ID_ANY, "Notes:")
-        btn_field_save = wx.Button(left_panel, 1, "Save", (50, 13))
-
-        left_sizer = wx.BoxSizer(wx.VERTICAL)
-        left_sizer.Add(item= lbl_name,
-                       proportion= 0, # use ratios between elements
-                       flag= wx.ALL, # border, alignment and sizing changes
-                       border= 10,
-                       userData= None) # generally not used
-        left_sizer.Add(lbl_company, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_phone, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_email, 0, wx.ALL, 10)
-        left_sizer.Add(lbl_notes, 0, wx.ALL, 10)
-        left_sizer.Add(btn_field_save, 0, wx.ALL, 10)
-        left_sizer.Layout()
-        
-        # middle panel: text fields and clear button
-        self.txt_name = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_company = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_phone = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))        
-        self.txt_email = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        self.txt_notes = wx.TextCtrl(middle_panel, wx.ID_ANY, "", size=(200,25))
-        btn_field_clear = wx.Button(middle_panel, 2, "Clear", (13, 200))
-
-        middle_sizer = wx.BoxSizer(wx.VERTICAL)
-        middle_sizer.Add(self.txt_name, 0, wx.ALL | wx.EXPAND, 5)
-        middle_sizer.Add(self.txt_company, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_phone, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_email, 0, wx.ALL, 5)
-        middle_sizer.Add(self.txt_notes, 0, wx.ALL, 5)
-        middle_sizer.Add(btn_field_clear, 0, wx.ALL, 10)
-        middle_sizer.Layout()
-
-        # right panel:
-            # listbox buttons
-        listbox_buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_listbox_showall = wx.Button(right_panel, 5, "Show All", (22,22))
-        btn_lstbx_select = wx.Button(right_panel, 3, "Select", (22, 22))
-        btn_lstbx_delete = wx.Button(right_panel, 4, "Delete", (22, 22))
-
-        #listbox_buttons_sizer.Add(btn_listbox_showall, 0, wx.ALL, 5)
-        listbox_buttons_sizer.Add(btn_lstbx_select, 0,wx.ALL, 5)
-        listbox_buttons_sizer.Add(btn_lstbx_delete, 0, wx.ALL, 5)
-        listbox_buttons_sizer.Layout()
-
-            # label and listbox
-        lbl_listbox = wx.StaticText(right_panel, wx.ID_ANY, "Contacts:")
-        the_list = PHdb.Contact.get_all_contacts()
-                # listbox's self.foo because it's needed elsewhere
-        self.lstbx_contacts = wx.ListBox(right_panel,  26, wx.DefaultPosition,
-                                     (175, 175), the_list, wx.LB_SINGLE)
-        self.lstbx_contacts.SetSelection(0)
-
-        right_sizer = wx.BoxSizer(wx.VERTICAL)
-        right_sizer.Add(lbl_listbox, 0, wx.ALL, 5)
-        right_sizer.Add(self.lstbx_contacts, 0, wx.ALL, 5)
-        right_sizer.Add(btn_listbox_showall, 0, wx.LEFT, 50)
-        right_sizer.Add(listbox_buttons_sizer, 0, wx.ALL, 5)
-        right_sizer.Layout()
-
-        # bind buttons and events
-
-        self.Bind(wx.EVT_BUTTON, self.OnSave, id=1)
-        self.Bind(wx.EVT_BUTTON, self.OnClear, id=2)
-        self.Bind(wx.EVT_BUTTON, self.OnSelect, id=3)
-        self.Bind(wx.EVT_BUTTON, self.OnDelete, id=4)
-        self.Bind(wx.EVT_BUTTON, self.OnShowAll, id=5)
-        self.Bind(wx.EVT_LISTBOX, self.OnContactSelected, id=26)
-        
-        # add the columns to the main tab frame
         main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        main_sizer.Add(left_panel)
-        main_sizer.Add(middle_panel) # add a ,2 for spacing
-        main_sizer.Add(right_panel, flag=wx.LEFT, border=45)
+
+        self.entry_subpanel = EntrySubPanel(self, ['name', 'company', 'phone',
+                                              'email', 'notes'])
+        self.listbox_subpanel = ListboxSubPanel(self, 'contacts')
         
-        self.SetSizerAndFit(main_sizer)
-        main_sizer.Layout()
+        main_sizer.Add(self.entry_subpanel)
+        main_sizer.Add(self.listbox_subpanel)
 
-    def update_listbox(self):
-        self.lstbx_contacts.Set(PHdb.Contact.get_all_contacts())
-        
-    
-    ####################
-    ## Event Handling ##
-    ####################    
-    def OnSave(self, event):
-        """ Saves the current fields into a new company or updates a current
-            company if the name already exists.
+        self.SetSizer(main_sizer)
 
-            """
 
-        # don't save contacts without names (make a dialog?)
-        if len(self.txt_name.GetValue()) == 0:
-            print 'error, no name'
-            pass
-        
-        # modify/create Company object for PHdbOperations.py
-        if not self.current_contact:
-            self.current_contact = PHdb.Contact()
-        self.current_contact.name = self.txt_name.GetValue()
-        self.current_contact.company = self.txt_company.GetValue()
-        self.current_contact.phone = self.txt_phone.GetValue()
-        self.current_contact.email = self.txt_email.GetValue()
-        self.current_contact.notes = self.txt_notes.GetValue()
-
-        # saving is handled by PHdbOperations.py
-        self.current_contact.write()
-        self.update_listbox()
-        
-
-    def OnClear(self, event):
-        """ Just clears the fields.  Doesn't delete the company.
-
-            """
-        # just clear everything out
-        self.txt_name.SetValue("")
-        self.txt_company.SetValue("")
-        self.txt_phone.SetValue("")
-        self.txt_email.SetValue("")
-        self.txt_notes.SetValue("")
-        
-    def OnSelect(self, event):
-        """ Bound to the select button.  populates the fields with the
-            current selection's info.
-
-            """
-        # get new Company object from PHdbOperations.py
-        name = self.lstbx_contacts.GetString(self.current_selected)
-        self.current_contact = PHdb.Contact.get_by_name(name)
-
-        # update listbox values with new company
-        self.txt_name.SetValue(self.current_contact.name)
-        self.txt_company.SetValue(self.current_contact.company)
-        self.txt_phone.SetValue(self.current_contact.phone)
-        self.txt_email.SetValue(self.current_contact.email)
-        self.txt_notes.SetValue(self.current_contact.notes)
-
-    def OnContactSelected(self, event):
-        """ Bound to the company listbox.  Updates the internal variable
-            current_selected (doesn't update the locally stored company object)
-
-            """
-        self.current_selected = event.GetSelection()
-        
-
-    def OnDelete(self, event):
-        """ Deletes the current selection *from the database*
-
-            """
-        # could use an "are you sure?" dialog
-        # deletion handled by PHdbOperations.py
-        name = self.lstbx_contacts.GetString(self.current_selected)
-        PHdb.Contact.delete_by_name(name)
-        self.update_listbox()
-
-    def OnShowAll(self, event):
-        """ Show all contacts regardless of the comany chosen in the company tab
-
-            """
-        pass
-        
 
 class ProjectPanel(NotebookPanel):
     """ The project tab for the notebook.
 
         """
     def __init__(self, parent):
-        NotebookPanel.__init__(self, parent= parent, name= "Project")
+        NotebookPanel.__init__(self, parent= parent)
+
+
 
 class SessionPanel(NotebookPanel):
     """ The session tab for the notebook.
 
         """
     def __init__(self, parent):
-        NotebookPanel.__init__(self, parent= parent, name= "Session")
+        NotebookPanel.__init__(self, parent= parent)
+
+
 
 class MysqlPanel(NotebookPanel):
     """ The MySQL tab for the notebook.  Allows the user to directly interact
@@ -582,7 +368,7 @@ class MysqlPanel(NotebookPanel):
         """
 
     def __init__(self, parent):
-        NotebookPanel.__init__(self, parent= parent, name= "MySQL")
+        NotebookPanel.__init__(self, parent= parent)
         
 
 

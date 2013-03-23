@@ -2,22 +2,12 @@
 ## Python 2.7
 ## Christopher Olsen
 
-# Copyright Notice: Copyright 2012 Christopher Olsen
-# License: GNU General Public License, v3 (see LICENSE.txt)
+# Copyright Notice: Copyright 2012, 2013 Christopher Olsen
+# License: None.  All rights reserved.
 #
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Once this project reaches maturity it will likely be released into the
+# wild but for now I'm removing the license to relieve myself from the fears
+# of being prematurely forked.
 
 
 import MySQLdb as mdb
@@ -113,10 +103,33 @@ def create_table_structure():
     connection.commit()
 
 
-
-    
 # objects correspond to relations (this is a simple ORM system)
-class Company(object):
+
+class ORM_Object(object):
+    ## As (if) possible methods should be moved here from the children classes
+    def __init__(self):
+        return NotImplementedError
+
+    # required methods
+    @staticmethod 
+    def get_all_names():
+        return NotImplementedError
+    
+    @classmethod
+    def get_by_name(cls, name):
+        return NotImplementedError
+
+    @classmethod
+    def delete_by_name(cls, name):
+        return NotImplementedError
+
+    def write(self):
+        return NotImplementedError
+        
+        
+
+
+class Company(ORM_Object):
     """ ORM Company class.  Interface for the "company" table of the database
 
         """
@@ -138,6 +151,7 @@ class Company(object):
             Returns: a new Company instance populated from the database
             
             """
+        assert name is not None and len(name) > 0
         global cursor
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM company WHERE name=%s",(name))
@@ -182,8 +196,11 @@ class Company(object):
                         self.state,self.phone,self.notes))
         connection.commit()
 
+    def set_attr(self, attribute, value):
+        self.__dict__[attribute] = value
+
     @staticmethod
-    def get_all_companies():
+    def get_all_companies(): # marked for deprecation
         """ Returns: a list of all company names
 
             """
@@ -191,6 +208,15 @@ class Company(object):
         return [x[0] for x in cursor.fetchall()]
 
     @staticmethod
+    def get_all_names():
+        """ Returns: a list of all company names
+
+            """
+        cursor.execute("SELECT name FROM company")
+        return [x[0] for x in cursor.fetchall()]
+        
+
+    @staticmethod # should be deprecated
     def delete_company_by_name(name):
         """ Takes a name string
             Deletes the corresponding company from the database
@@ -201,14 +227,14 @@ class Company(object):
         company.delete_by_name(name)
         
 
-class Contact(object):
+class Contact(ORM_Object):
     """ ORM Contact class.  Interface for the "contact" table of the database
     
         """
-    def __init__(self, name=None, company_name=None, phone=None,
+    def __init__(self, name=None, company=None, phone=None,
                  email=None, notes=None):
         self.name = name
-        self.company_name = company_name
+        self.company = company
         self.phone = phone
         self.email = email
         self.notes = notes
@@ -219,9 +245,9 @@ class Contact(object):
             
             """
         cursor.execute("REPLACE INTO contact "\
-                       "(company_name, name, phone, email, notes)"\
+                       "(company, name, phone, email, notes)"\
                        " VALUES (%s,%s,%s,%s,%s)",\
-                        (self.company_name,self.name,self.phone,\
+                        (self.company,self.name,self.phone,\
                         self.email,self.notes))
         connection.commit()
 
@@ -231,13 +257,14 @@ class Contact(object):
             Returns: a new Contact instance populated from the database
             
             """
+        print 'Contact get_by_name'
         cursor = connection.cursor(mdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM contact WHERE name=%s",(name))
         record_dict = cursor.fetchall()[0]
 
         new_contact_obj = Contact()
         if record_dict:
-            new_contact_obj.company_name = record_dict['company_name']
+            new_contact_obj.company = record_dict['company']
             new_contact_obj.name = record_dict['name']
             new_contact_obj.email = record_dict['email']
             new_contact_obj.notes = record_dict['notes']
@@ -246,15 +273,24 @@ class Contact(object):
             print 'there was an error'
 
         cursor = connection.cursor()
+        print new_contact_obj.__dict__
         return new_contact_obj
 
     @staticmethod
-    def get_all_contacts():
+    def get_all_contacts(): # marked for deprecation
         """ Returns: all names from the contact table
     
             """
         cursor.execute("SELECT name FROM contact")
-        return cursor.fetchall()
+        return [x[0] for x in cursor.fetchall()]
+
+    @staticmethod
+    def get_all_names():
+        """ Returns: all names from the contact table
+    
+            """
+        cursor.execute("SELECT name FROM contact")
+        return [x[0] for x in cursor.fetchall()]
 
     @staticmethod
     def delete_by_name(name):
@@ -269,7 +305,7 @@ class Contact(object):
 
 
 
-class Project(object):
+class Project(ORM_Object):
     """ ORM Project class.  Interface for the "project" table of the database
 
         """
@@ -370,7 +406,7 @@ class Project(object):
         connection.commit()
 
     
-class Session(object):
+class Session(ORM_Object):
     """ ORM Session class.  Interface for the "session" table of the database
         
         """

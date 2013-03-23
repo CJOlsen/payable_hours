@@ -1,7 +1,7 @@
 Project: Payable Hours
 Author: Christopher Olsen
-License: GNU GPL (see LICENSE.txt)
-Version: 0.02 (in development)
+License: None.  All rights reserved (for now)
+Version: 0.03 (in development)
 
 About:
 	Payable Hours is a program for the tracking of clients, projects,
@@ -13,15 +13,14 @@ makes for a clear layer of abstraction.
 Payable Hours attempts to follow the Model-View-Controller (MVC) 
 design paradigm.
 
-
-TODO: * CREATE NEW WXPYTHON INTERFFACE
-
 Requires:
 	Python 2.7, MySQL and wxpython
 
 
-It would be appreciated if the project isn't forked until it's functional,
-though the GPL license makes it legal to do so.
+I have removed the GPL license for the time being (during development) and will
+make final decisions on licensing at a later date.  If you'd like to help 
+work on the project let me know and it's very possible that I'll revert the 
+license to the GPL.
 
 
 As always questions, ideas and help are appreciated.
