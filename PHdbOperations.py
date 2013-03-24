@@ -196,6 +196,8 @@ class Company(ORM_Object):
                         self.state,self.phone,self.notes))
         connection.commit()
 
+        print 'company write method'
+
     def set_attr(self, attribute, value):
         self.__dict__[attribute] = value
 
@@ -384,7 +386,17 @@ class Project(ORM_Object):
             
             """
         cursor.execute("SELECT name FROM project")
-        return cursor.fetchall()
+        return [x[0] for x in cursor.fetchall()]
+
+
+    @staticmethod
+    def get_all_names():
+        """ Returns: all names from the project table
+            
+            """
+        cursor.execute("SELECT name FROM project")
+        return [x[0] for x in cursor.fetchall()]
+        
 
     @staticmethod
     def get_active_projects():
@@ -429,6 +441,8 @@ class Session(ORM_Object):
             
             """
         self.sessionID = self.make_sessionID()
+
+        print 'sessionID', self.sessionID
         
         cursor.execute("REPLACE INTO session "\
                        "(sessionID, company_name, project_name,"\
@@ -488,7 +502,13 @@ class Session(ORM_Object):
             """
         cursor.execute("SELECT MAX(project_session_number) FROM session WHERE "\
                        "project_name=%s", (self.project_name))
-        max_number = cursor.fetchone()[0] + 1
+        current_max = cursor.fetchone()[0]
+        max_number = 0 # namespace?
+        if current_max is not None:
+            max_number = current_max + 1
+        else:
+            max_number = 1
+
         self.project_session_number = max_number
         return '.'.join([self.project_name, str(max_number)])
 

@@ -25,87 +25,6 @@ connection,cursor = PHdb.connectDB()
 ################################################################################
 
 
-class NotebookPanel(wx.Panel):
-    """ This is the Class for notebook tabs.
-
-        """
-    def __init__(self, parent):
-        wx.Panel.__init__(self, parent=parent)
-
-        self.parent = parent
-        self.current_orm_object = NotImplementedError
-        self.current_selected = 0
-        self.fields = NotImplementedError
-
-    def update_listbox(self):
-        new_list = self.current_orm_object.get_all_names()
-        self.listbox_subpanel.listbox.Set(new_list)
-    
-    ####################
-    ## Event Handling ##
-    ####################
-    def OnSelect(self, event):
-        """ Bound to the Select button in the listbox subpanel
-
-            """
-        # get the selected text from the listbox (which is buried)
-        name = self.listbox_subpanel.listbox.GetString(self.current_selected)
-
-        # get a new ORM object from PHdb*.py by calling a @classmethod
-        self.current_orm_object = self.current_orm_object.get_by_name(name)
-
-        # step through the text boxes and update them
-        for field in self.fields:
-            new_value = self.current_orm_object.__dict__[field]
-            if new_value is not None:
-                self.entry_subpanel.SetField(field, new_value)
-            else:
-                self.entry_subpanel.SetField(field, '')
-
-
-    def OnClear(self, event):
-        """ Bound to the Clear button in the entry subpanel
-
-            """
-        # step through the fields, clearing them along the way
-        for field in self.fields:
-            self.entry_subpanel.SetField(field, '')
-
-    def OnSave(self, event):
-        """ Bound to the Save button in the entry subpanel
-
-            """
-        # don't save companies without names (make a dialog?)
-        if len(self.entry_subpanel.txt_name.GetValue()) == 0:
-            print 'error, no name'
-            return error
-        
-        for field in self.fields:
-            value = self.entry_subpanel.GetField(field)
-            self.current_orm_object.set_attr(field, value)
-
-        # saving is handled by PHdbOperations.py
-        self.current_company.write()
-        self.update_listbox()
-
-    def OnDelete(self, event):
-        """ Bound to the Delete button in the listbox subpanel
-
-            """
-        # get the selected text from the listbox (which is buried)
-        name = self.listbox_subpanel.listbox.GetString(self.current_selected)        
-        self.current_orm_object.delete_by_name(name)
-        self.update_listbox()
-
-    def OnListboxSelected(self, event):
-        """ Bound to the listbox, called when a new member of the listbox
-            is selected.
-
-            """
-        self.current_selected = event.GetSelection()
-        
-            
-
 class EntrySubPanel(wx.Panel):
     """ This is a subpanel that handles the creation and management of
         multiple text fields and their labels, and their buttons.
@@ -233,7 +152,6 @@ class ListboxSubPanel(wx.Panel):
 
         buttons_sizer.Add(btn_lstbx_select, 0,wx.ALL, 5)
         buttons_sizer.Add(btn_lstbx_delete, 0, wx.ALL, 5)
-        #buttons_sizer.Layout()
 
             # label and listbox
         lbl_listbox = wx.StaticText(self,
@@ -282,35 +200,118 @@ class ListboxSubPanel(wx.Panel):
 
     def UpdateListbox(self):
         self.listbox.Set(self.current_orm_object.get_all_names())
+
+
+
+class NotebookPanel(wx.Panel):
+    """ This is the Class for notebook tabs.
+
+        """
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent=parent)
+
+        self.parent = parent
+        self.current_orm_object = NotImplementedError
+        self.current_selected = 0
+        self.fields = NotImplementedError
+
+    def update_listbox(self):
+        new_list = self.current_orm_object.get_all_names()
+        self.listbox_subpanel.listbox.Set(new_list)
+
+    def BuildUI(self,panel_type):
+        """ Panels are nested to create layout.  Logic is handled in the
+            On*** definitions which recieve and handle events.  Elements that
+            need to be accessible outside of this definition are prepended
+            self.<element>
+
+            """
+        assert panel_type in ['companies', 'contacts', 'projects', 'sessions']
+        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.entry_subpanel = EntrySubPanel(self, self.fields)
+        self.listbox_subpanel = ListboxSubPanel(self, panel_type)
         
+        main_sizer.Add(self.entry_subpanel)
+        main_sizer.Add(self.listbox_subpanel)
+
+        self.SetSizer(main_sizer)
+    
+    ####################
+    ## Event Handling ##
+    ####################
+    def OnSelect(self, event):
+        """ Bound to the Select button in the listbox subpanel
+
+            """
+        # get the selected text from the listbox (which is buried)
+        name = self.listbox_subpanel.listbox.GetString(self.current_selected)
+
+        # get a new ORM object from PHdb*.py by calling a @classmethod
+        self.current_orm_object = self.current_orm_object.get_by_name(name)
+
+        # step through the text boxes and update them
+        for field in self.fields:
+            new_value = self.current_orm_object.__dict__[field]
+            if new_value is not None:
+                self.entry_subpanel.SetField(field, new_value)
+            else:
+                self.entry_subpanel.SetField(field, '')
+
+
+    def OnClear(self, event):
+        """ Bound to the Clear button in the entry subpanel
+
+            """
+        # step through the fields, clearing them along the way
+        for field in self.fields:
+            self.entry_subpanel.SetField(field, '')
+
+    def OnSave(self, event):
+        """ Bound to the Save button in the entry subpanel
+
+            """
+        # don't save companies without names (make a dialog?)
+        if len(self.entry_subpanel.txt_name.GetValue()) == 0:
+            print 'error, no name'
+            return error
+        
+        for field in self.fields:
+            value = self.entry_subpanel.GetField(field)
+            self.current_orm_object.set_attr(field, value)
+
+        # saving is handled by PHdbOperations.py
+        self.current_company.write()
+        self.update_listbox()
+
+    def OnDelete(self, event):
+        """ Bound to the Delete button in the listbox subpanel
+
+            """
+        # get the selected text from the listbox (which is buried)
+        name = self.listbox_subpanel.listbox.GetString(self.current_selected)        
+        self.current_orm_object.delete_by_name(name)
+        self.update_listbox()
+
+    def OnListboxSelected(self, event):
+        """ Bound to the listbox, called when a new member of the listbox
+            is selected.
+
+            """
+        self.current_selected = event.GetSelection()
+        
+
+
 class CompanyPanel(NotebookPanel):
     """ The company tab for the notebook.
 
         """
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
-
         self.current_orm_object = PHdb.Company(None)
         self.fields = ['name', 'address', 'city', 'state', 'phone', 'notes']
-        self.BuildUI()
-
-    def BuildUI(self):
-        """ Panels are nested to create layout.  Logic is handled in the
-            On*** definitions which recieve and handle events.  Elements that
-            need to be accessible outside of this definition are prepended
-            self.<element>
-
-            """ 
-        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.entry_subpanel = EntrySubPanel(self, self.fields)
-        self.listbox_subpanel = ListboxSubPanel(self, 'companies')
+        self.BuildUI('companies')
         
-        main_sizer.Add(self.entry_subpanel)
-        main_sizer.Add(self.listbox_subpanel)
-
-        self.SetSizer(main_sizer)
-
  
 class ContactPanel(NotebookPanel):
     """ The contact tab for the notebook.
@@ -321,29 +322,9 @@ class ContactPanel(NotebookPanel):
 
         self.current_selected = 0 #keeps track of selected listbox item
         self.current_orm_object = PHdb.Contact(None)
-
         self.fields = ['name', 'company', 'phone', 'email', 'notes']
-        
-        self.BuildUI()
-        self.Show()
-
-    def BuildUI(self):
-        """ Panels are nested to create layout.  Logic is handled in the
-            On*** definitions which recieve and handle events.  Elements that
-            need to be accessible outside of this definition are prepended
-            self.<element>
-
-            """
-        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.entry_subpanel = EntrySubPanel(self, ['name', 'company', 'phone',
-                                              'email', 'notes'])
-        self.listbox_subpanel = ListboxSubPanel(self, 'contacts')
-        
-        main_sizer.Add(self.entry_subpanel)
-        main_sizer.Add(self.listbox_subpanel)
-
-        self.SetSizer(main_sizer)
+        self.BuildUI('contacts')
+        #self.Show()
 
 
 
@@ -357,29 +338,8 @@ class ProjectPanel(NotebookPanel):
                        'quoted_hours', 'worked_hours', 'billed_hours',
                        'total_invoiced', 'total_paid', 'money_owed',
                        'project_active', 'notes']
-
         self.current_ORM_object = PHdb.Project(None)
-
-        self.BuildUI()
-
-                       
-
-    def BuildUI(self):
-        """ Panels are nested to create layout.  Logic is handled in the
-            On*** definitions which recieve and handle events.  Elements that
-            need to be accessible outside of this definition are prepended
-            self.<element>
-
-            """ 
-        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.entry_subpanel = EntrySubPanel(self, self.fields)
-        self.listbox_subpanel = ListboxSubPanel(self, 'projects')
-        
-        main_sizer.Add(self.entry_subpanel)
-        main_sizer.Add(self.listbox_subpanel)
-
-        self.SetSizer(main_sizer)
+        self.BuildUI('projects')
 
 
 
@@ -389,29 +349,12 @@ class SessionPanel(NotebookPanel):
         """
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
-
         self.current_orm_object = PHdb.Company(None)
         self.fields = ['sessionID', 'company_name',  'project_name',
                        'project_session_number', 'start_time', 'stop_time',
                        'time', 'notes', 'git_commit']
-        self.BuildUI()
+        self.BuildUI('sessions')
 
-    def BuildUI(self):
-        """ Panels are nested to create layout.  Logic is handled in the
-            On*** definitions which recieve and handle events.  Elements that
-            need to be accessible outside of this definition are prepended
-            self.<element>
-
-            """ 
-        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.entry_subpanel = EntrySubPanel(self, self.fields)
-        self.listbox_subpanel = ListboxSubPanel(self, 'sessions')
-        
-        main_sizer.Add(self.entry_subpanel)
-        main_sizer.Add(self.listbox_subpanel)
-
-        self.SetSizer(main_sizer)
 
 
 class MysqlPanel(NotebookPanel):
