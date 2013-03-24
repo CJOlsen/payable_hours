@@ -242,25 +242,29 @@ class ListboxSubPanel(wx.Panel):
 
         # get the list depending on type of listbox
         if self.list_type == 'companies':
-            the_list = PHdb.Company.get_all_companies()
-            lb_height = 150
-            self.Bind(wx.EVT_LISTBOX, self.parent.OnListboxSelected, id=26)
+            the_list = PHdb.Company.get_all_names()
+            listbox_height = 150
         elif self.list_type == 'contacts':
-            the_list = PHdb.Contact.get_all_contacts()
-            lb_height = 125
-            self.Bind(wx.EVT_LISTBOX, self.parent.OnListboxSelected, id=26)
+            the_list = PHdb.Contact.get_all_names()
+            listbox_height = 125
         elif self.list_type == 'projects':
             the_list = PHdb.Project.get_all_projects()
+            listbox_height = 300
         elif self.list_type == 'sessions':
-            the_list = PHdb.Session.get_all_sessions()
+            the_list = PHdb.Session.get_all_names()
+            listbox_height = 200
+            
         else:
             return Exception # could be more specific
 
+        print 'the_list', the_list
+        
+        self.Bind(wx.EVT_LISTBOX, self.parent.OnListboxSelected, id=26)
         
         self.listbox = wx.ListBox(self,
                                   26,
                                   wx.DefaultPosition,
-                                  (175, lb_height),
+                                  (175, listbox_height),
                                   the_list,
                                   wx.LB_SINGLE)
         self.listbox.SetSelection(0)
@@ -349,6 +353,33 @@ class ProjectPanel(NotebookPanel):
         """
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
+        self.fields = ['name', 'company', 'contact', 'hourly_pay',
+                       'quoted_hours', 'worked_hours', 'billed_hours',
+                       'total_invoiced', 'total_paid', 'money_owed',
+                       'project_active', 'notes']
+
+        self.current_ORM_object = PHdb.Project(None)
+
+        self.BuildUI()
+
+                       
+
+    def BuildUI(self):
+        """ Panels are nested to create layout.  Logic is handled in the
+            On*** definitions which recieve and handle events.  Elements that
+            need to be accessible outside of this definition are prepended
+            self.<element>
+
+            """ 
+        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.entry_subpanel = EntrySubPanel(self, self.fields)
+        self.listbox_subpanel = ListboxSubPanel(self, 'projects')
+        
+        main_sizer.Add(self.entry_subpanel)
+        main_sizer.Add(self.listbox_subpanel)
+
+        self.SetSizer(main_sizer)
 
 
 
@@ -359,6 +390,28 @@ class SessionPanel(NotebookPanel):
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
 
+        self.current_orm_object = PHdb.Company(None)
+        self.fields = ['sessionID', 'company_name',  'project_name',
+                       'project_session_number', 'start_time', 'stop_time',
+                       'time', 'notes', 'git_commit']
+        self.BuildUI()
+
+    def BuildUI(self):
+        """ Panels are nested to create layout.  Logic is handled in the
+            On*** definitions which recieve and handle events.  Elements that
+            need to be accessible outside of this definition are prepended
+            self.<element>
+
+            """ 
+        main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.entry_subpanel = EntrySubPanel(self, self.fields)
+        self.listbox_subpanel = ListboxSubPanel(self, 'sessions')
+        
+        main_sizer.Add(self.entry_subpanel)
+        main_sizer.Add(self.listbox_subpanel)
+
+        self.SetSizer(main_sizer)
 
 
 class MysqlPanel(NotebookPanel):

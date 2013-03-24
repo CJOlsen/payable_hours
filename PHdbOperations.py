@@ -108,23 +108,23 @@ def create_table_structure():
 class ORM_Object(object):
     ## As (if) possible methods should be moved here from the children classes
     def __init__(self):
-        return NotImplementedError
+        raise NotImplementedError
 
     # required methods
     @staticmethod 
     def get_all_names():
-        return NotImplementedError
+        raise NotImplementedError
     
     @classmethod
     def get_by_name(cls, name):
-        return NotImplementedError
+        raise NotImplementedError
 
     @classmethod
     def delete_by_name(cls, name):
-        return NotImplementedError
+        raise NotImplementedError
 
     def write(self):
-        return NotImplementedError
+        raise NotImplementedError
         
         
 
@@ -469,6 +469,17 @@ class Session(ORM_Object):
             
         cursor = connection.cursor()
         return new_session_obj
+
+    
+    @staticmethod
+    def get_all_names():
+        """ Returns: a list of all company names
+
+            """
+        cursor.execute("SELECT sessionID FROM session")
+        return [x[0] for x in cursor.fetchall()]
+
+
 
     def make_sessionID(self):
         """ Returns: a string in the form "project_name.4" where 4 would
