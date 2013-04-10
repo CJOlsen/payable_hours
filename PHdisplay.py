@@ -19,6 +19,7 @@ import wx
 # connect to database
 connection,cursor = PHdb.connectDB()
 
+debugging = True
 
 ################################################################################
 #### wxpython code
@@ -48,6 +49,7 @@ class EntrySubPanel(wx.Panel):
         count = 0
         for name in names:
             assert type(name) is str
+            if debugging: print "EntrySubPanel __init__, name:", name
             self.fields[name] = {'label':None, 'txt_field':None,'index':count}
             count += 1
 
@@ -119,9 +121,12 @@ class EntrySubPanel(wx.Panel):
         self.SetSizer(main_sub_sizer)
 
     def SetField(self, field_name, value):
+        # self.fields have a dictionary of 'label', 'txt_field', and 'index'
+        if debugging: print 'EntrySubPanel SetField'
         self.fields[field_name]['txt_field'].SetValue(value)
 
     def GetField(self, field_name):
+        if debugging: print 'EntrySubPanel GetField, field_name:', field_name
         return self.fields[field_name]['txt_field'].GetValue()
         
 
@@ -211,9 +216,10 @@ class NotebookPanel(wx.Panel):
         wx.Panel.__init__(self, parent=parent)
 
         self.parent = parent
-        self.current_orm_object = NotImplementedError
+        self.current_orm_object = Exception
         self.current_selected = 0
-        self.fields = NotImplementedError
+        self.fields = Exception
+        self.colleagues = []
 
     def update_listbox(self):
         new_list = self.current_orm_object.get_all_names()
@@ -272,7 +278,8 @@ class NotebookPanel(wx.Panel):
 
             """
         # don't save companies without names (make a dialog?)
-        if len(self.entry_subpanel.txt_name.GetValue()) == 0:
+        ####if len(self.entry_subpanel.txt_name.GetValue()) == 0:
+        if len(self.entry_subpanel.GetField("txt_name")) == 0:
             print 'error, no name'
             return error
         
@@ -299,7 +306,37 @@ class NotebookPanel(wx.Panel):
 
             """
         self.current_selected = event.GetSelection()
+
+    ###################
+    #### Messaging ####
+    ###################
+
+    def add_colleague(self, tab):
+        """ Takes a notebook tab and adds it to the list of colleagues.
+
+            """
+        self.colleagues.append(tab)
+
+    def remove_colleague(self, tab):
+        """ Takes a notebook tab and attempts to remove it from the current
+            list of colleagues.
+
+            """
+        self.colleagues = [x for x in self.colleagues if x is not tab]
         
+    
+    def receive_message(self, **kwargs):
+        """ Takes incoming messages and performs necessary actions.
+
+            """
+        return NotImplementedError
+
+    def send_message(self, **kwargs):
+        """ Sends messages to all colleagues and performs necessary actions.
+
+            """
+        return NotImplementedError
+
 
 
 class CompanyPanel(NotebookPanel):
@@ -311,6 +348,21 @@ class CompanyPanel(NotebookPanel):
         self.current_orm_object = PHdb.Company(None)
         self.fields = ['name', 'address', 'city', 'state', 'phone', 'notes']
         self.BuildUI('companies')
+
+
+    def receive_message(self, **kwargs):
+        """ Takes incoming messages and performs necessary actions.
+
+            """
+        ## company panel doesn't need any messages
+        pass
+
+    def send_message(self, **kwargs):
+        """ Sends messages to all colleagues and performs necessary actions.
+
+            """
+        ## sends message to contact, project and session tabs
+        pass
         
  
 class ContactPanel(NotebookPanel):
@@ -325,6 +377,20 @@ class ContactPanel(NotebookPanel):
         self.fields = ['name', 'company', 'phone', 'email', 'notes']
         self.BuildUI('contacts')
         #self.Show()
+
+    def receive_message(self, **kwargs):
+        """ Takes incoming messages and performs necessary actions.
+
+            """
+        ## receives messages from company tab
+        pass
+
+    def send_message(self, **kwargs):
+        """ Sends messages to all colleagues and performs necessary actions.
+
+            """
+        ## sends message to project and session tabs
+        pass
 
 
 
@@ -341,6 +407,20 @@ class ProjectPanel(NotebookPanel):
         self.current_ORM_object = PHdb.Project(None)
         self.BuildUI('projects')
 
+    def receive_message(self, **kwargs):
+        """ Takes incoming messages and performs necessary actions.
+
+            """
+        ## receives messages from company and contact tabs
+        pass
+
+    def send_message(self, **kwargs):
+        """ Sends messages to all colleagues and performs necessary actions.
+
+            """
+        ## sends message to session tab
+        pass
+
 
 
 class SessionPanel(NotebookPanel):
@@ -354,6 +434,21 @@ class SessionPanel(NotebookPanel):
                        'project_session_number', 'start_time', 'stop_time',
                        'time', 'notes', 'git_commit']
         self.BuildUI('sessions')
+
+
+    def receive_message(self, **kwargs):
+        """ Takes incoming messages and performs necessary actions.
+
+            """
+        ## receives messages from company, contact and project tabs
+        pass
+
+    def send_message(self, **kwargs):
+        """ Sends messages to all colleagues and performs necessary actions.
+
+            """
+        ## sends message to session tab
+        pass
 
 
 

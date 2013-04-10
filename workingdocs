@@ -1,0 +1,48 @@
+Documentation:
+
+    PHdisplay.py Docs:
+        
+        class EntrySubPanel:
+            EntrySubPanel.names
+                list of entry field names
+            EntrySubPanel.fields
+                dictionary (w/ key as name) of dictionaries with keys:
+                    'label' =  wx.StaticText object with name "name:"
+                    'txt_field' = wx.TextCtrl object
+                    'index' = not currently used.  simple incremented value
+                              counting the fields
+            EntrySubPanel.buttons
+                dictionary with names as keys
+                    wx.Buttons as values
+
+        class ListboxSubPanel:
+
+
+        class NotebookPanel:
+            contains an EntrySubPanel and ListBoxSubPanel at least
+
+
+            class CompanyPanel:
+                
+
+            class ContactPanel:
+
+
+            class ProjectPanel:
+
+
+            class SessionPanel:
+
+
+            class MysqlPanel:
+
+
+        class MainNotebook:
+            holds the five NotebookPanel's
+
+
+        class MainFrame:
+            contains the MainNotebook as well as all menu code
+            
+                
+            
