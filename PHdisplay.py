@@ -121,11 +121,19 @@ class EntrySubPanel(wx.Panel):
         self.SetSizer(main_sub_sizer)
 
     def SetField(self, field_name, value):
+        """ Takes a field_name and a value and sets that value in the UI
+            Returns: nothing
+
+            """
         # self.fields have a dictionary of 'label', 'txt_field', and 'index'
         if debugging: print 'EntrySubPanel SetField'
         self.fields[field_name]['txt_field'].SetValue(value)
 
     def GetField(self, field_name):
+        """ Takes a field_name and
+            Returns: a string retrieved from the UI
+
+            """
         if debugging: print 'EntrySubPanel GetField, field_name:', field_name
         return self.fields[field_name]['txt_field'].GetValue()
         
@@ -136,6 +144,10 @@ class ListboxSubPanel(wx.Panel):
 
         """
     def __init__(self, parent, list_type=None):
+        """ takes a parent object (a wxwidget parent) and a list_type that
+            must be 'companies', 'contacts', 'projects', or 'sessions'
+
+            """
         assert list_type in ['companies', 'contacts', 'projects', 'sessions',
                              None]
         wx.Panel.__init__(self, parent)
@@ -145,6 +157,10 @@ class ListboxSubPanel(wx.Panel):
         self.BuildUI()
 
     def BuildUI(self):
+        """ Attempts to build the user interface, called by self during init
+            Returns: nothing (even in the event of error)
+
+            """
 
         listbox_subpanel = wx.Panel(self.Parent)
         listbox_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -204,6 +220,11 @@ class ListboxSubPanel(wx.Panel):
         #self.Bind(wx.EVT_LISTBOX, self.parent.OnCompanySelected, id=26)
 
     def UpdateListbox(self):
+        """ Reaches out to PHdbOperations and collects information of the
+            current listbox type, updates the UI
+            Returns: nothing
+
+            """
         self.listbox.Set(self.current_orm_object.get_all_names())
 
 
@@ -213,6 +234,7 @@ class NotebookPanel(wx.Panel):
 
         """
     def __init__(self, parent):
+        """ Returns: nothing """
         wx.Panel.__init__(self, parent=parent)
 
         self.parent = parent
@@ -222,6 +244,9 @@ class NotebookPanel(wx.Panel):
         self.colleagues = []
 
     def update_listbox(self):
+        """ Strange.  May conflict with ListboxSubpanel.UpdateListbox()
+            One should be deprecated """
+        ######## marked for deprecation ########
         new_list = self.current_orm_object.get_all_names()
         self.listbox_subpanel.listbox.Set(new_list)
 
@@ -230,6 +255,7 @@ class NotebookPanel(wx.Panel):
             On*** definitions which recieve and handle events.  Elements that
             need to be accessible outside of this definition are prepended
             self.<element>
+            Returns: nothing
 
             """
         assert panel_type in ['companies', 'contacts', 'projects', 'sessions']
@@ -247,8 +273,12 @@ class NotebookPanel(wx.Panel):
     ## Event Handling ##
     ####################
     def OnSelect(self, event):
-        """ Bound to the Select button in the listbox subpanel
-
+        """ Bound to the Select button in the listbox subpanel.
+            Gets the currently selected name from the UI listbox, calls
+            upon PHdbOperations to get the corresponding info and updates
+            the entry fields.
+            Returns: nothing (event handling)
+            
             """
         # get the selected text from the listbox (which is buried)
         name = self.listbox_subpanel.listbox.GetString(self.current_selected)
@@ -266,7 +296,9 @@ class NotebookPanel(wx.Panel):
 
 
     def OnClear(self, event):
-        """ Bound to the Clear button in the entry subpanel
+        """ Bound to the Clear button in the entry subpanel.
+            Clears the entry fields of the UI.
+            Returns: nothing (event handling)
 
             """
         # step through the fields, clearing them along the way
@@ -274,7 +306,10 @@ class NotebookPanel(wx.Panel):
             self.entry_subpanel.SetField(field, '')
 
     def OnSave(self, event):
-        """ Bound to the Save button in the entry subpanel
+        """ Bound to the Save button in the entry subpanel.
+            Collects data from entry fields and calls upon PHdbOperations to
+            save them, then updates the UI listbox.
+            Returns: nothing (event handling)
 
             """
         # don't save companies without names (make a dialog?)
@@ -293,6 +328,9 @@ class NotebookPanel(wx.Panel):
 
     def OnDelete(self, event):
         """ Bound to the Delete button in the listbox subpanel
+            Gets the name of the currently selected item in the UI listbox
+            and calls upon PHdbOperations to delete its corresponding record.
+            Returns: nothing (event handling)
 
             """
         # get the selected text from the listbox (which is buried)
@@ -302,7 +340,9 @@ class NotebookPanel(wx.Panel):
 
     def OnListboxSelected(self, event):
         """ Bound to the listbox, called when a new member of the listbox
-            is selected.
+            is selected.  Only called for a mouseclick inside the listbox.
+            Updates the internal "current_selected" variable.
+            Returns: nothing
 
             """
         self.current_selected = event.GetSelection()

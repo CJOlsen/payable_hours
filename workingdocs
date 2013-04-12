@@ -43,6 +43,41 @@ Documentation:
 
         class MainFrame:
             contains the MainNotebook as well as all menu code
+
+
+
+
+    PHdbOperations:
+        MySQLdb (python-mysql) takes care of the database connection and most of
+            the dirty business
+
+
+        Classes:
+            ORM_Object(object):
+                -Company, Contact, Project and Session objects inherit
+                    from ORM_Object
+                @staticmethods:
+                    get_all_names():
+                        implemented by child class
+                @classmethods:
+                    get_by_name(cls, name):
+                        implemented by child class
+                    delete_by_name(cls, name):
+                        implemented by child class
+                write(self):
+                    implemented by child class
+
+            Company(ORM_Object):
+
+            Contact(ORM_Object):
+
+            Project(ORM_Object):
+
+            Session(ORM_Object):
+
             
-                
+                        
+            
+        
+        
             
