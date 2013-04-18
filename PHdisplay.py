@@ -569,7 +569,7 @@ class MainFrame(wx.Frame):
     def OnExit(self, e):
         self.Close(True)
 
-app = wx.App(False)
+app = wx.App(True)
 frame = MainFrame(None,  'Payable Horses')
 app.MainLoop()
         
