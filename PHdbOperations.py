@@ -114,6 +114,10 @@ class ORM_Object(object):
         raise NotImplementedError
 
     # required methods
+
+    def set_attr(self, attribute, value):
+        self.__dict__[attribute] = value
+        
     @staticmethod 
     def get_all_names():
         raise NotImplementedError
@@ -200,9 +204,6 @@ class Company(ORM_Object):
         connection.commit()
 
         print 'company write method'
-
-    def set_attr(self, attribute, value):
-        self.__dict__[attribute] = value
 
     @staticmethod
     def get_all_companies(): # marked for deprecation
