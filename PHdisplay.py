@@ -1,3 +1,17 @@
+# Payable Hours
+# Author: Christopher Olsen
+#
+# Copyright Notice: Copyright 2012, 2013 Christopher Olsen
+# License: None. All rights reserved.
+#
+# Once this project reaches maturity it will likely be released into the
+# wild but for now I'm removing the license to relieve myself from the fears
+# of being prematurely forked.
+
+
+## *** THIS FILE HOLDS THE DISPLAY AND LOGIC CODE, FOR MYSQL INTERFACE SEE
+## PHdbOperations.py ***
+
 
 import wx
 import PHdbOperations as PHdb
@@ -75,7 +89,7 @@ class NotebookPanel(wx.Panel):
                        5)
 
         # add listbox
-        ## get the list Aand height depending on type of listbox
+        ## get the list and height depending on type of listbox
         if self.list_type == 'companies':
             the_list = PHdb.Company.get_all_names()
             listbox_height = 150
@@ -103,7 +117,7 @@ class NotebookPanel(wx.Panel):
         self.listbox = wx.ListBox(self.panel,           # parent
                                   26,                   # id
                                   (1,2),                # pos
-                                  (175, 28.5*(len(self.fields)-1)),# size
+                                  (275, 28.5*(len(self.fields)-1)),# size
                                   the_list,             # choces
                                   wx.LB_SINGLE)         # style
         self.sizer.Add(self.listbox,
@@ -117,13 +131,15 @@ class NotebookPanel(wx.Panel):
 
         # add listbox buttons
         select_button = wx.Button(self.panel, 3, "Select")
-        delete_button = wx.Button(self.panel, 4, "Delete")     
+        delete_button = wx.Button(self.panel, 4, "Delete")
+        showall_button = wx.Button(self.panel, 5, "Show All")
         listbox_button_sizer =wx.BoxSizer()
         listbox_button_sizer.Add(select_button)
         listbox_button_sizer.Add(delete_button)
+        listbox_button_sizer.Add(showall_button)
         self.sizer.Add(listbox_button_sizer,
                        (len(self.fields), 3),
-                       (1,1),
+                       (1,2),
                        wx.ALIGN_CENTER,
                        5)
 
