@@ -74,13 +74,13 @@ def create_table_structure():
                    "phone VARCHAR(15),"\
                    "email VARCHAR(30),"\
                    "notes VARCHAR(200),"\
-                   "company_name VARCHAR(50),"\
+                   "company VARCHAR(50),"\
                    "PRIMARY KEY (name));")
     connection.commit()
     cursor.execute("CREATE TABLE project ("\
                    "name VARCHAR(50),"\
-                   "company_name VARCHAR(50),"\
-                   "contact_name VARCHAR(50),"\
+                   "company VARCHAR(50),"\
+                   "contact VARCHAR(50),"\
                    "hourly_pay DECIMAL(5,2),"\
                    "quoted_hours INT(11),"\
                    "worked_hours DECIMAL(6,2),"\
@@ -94,15 +94,15 @@ def create_table_structure():
     connection.commit()
     cursor.execute("CREATE TABLE session ("\
                    "sessionID VARCHAR(20),"\
-                   "company_name VARCHAR(50),"\
-                   "project_name VARCHAR(50),"\
+                   "company VARCHAR(50),"\
+                   "project VARCHAR(50),"\
                    "project_session_number INT(4),"\
                    "start_time DATETIME,"\
                    "stop_time DATETIME,"\
                    "time TIME,"\
                    "notes VARCHAR(400),"\
                    "git_commit VARCHAR(12),"\
-                   "PRIMARY KEY (project_name, project_session_number));")
+                   "PRIMARY KEY (project, project_session_number));")
     connection.commit()
 
 
@@ -120,6 +120,10 @@ class ORM_Object(object):
         
     @staticmethod 
     def get_all_names():
+        raise NotImplementedError
+
+    @staticmethod
+    def get_filtered_names(**kwargs):
         raise NotImplementedError
     
     @classmethod
@@ -220,7 +224,6 @@ class Company(ORM_Object):
             """
         cursor.execute("SELECT name FROM company")
         return [x[0] for x in cursor.fetchall()]
-        
 
     @staticmethod # should be deprecated
     def delete_company_by_name(name):
@@ -298,6 +301,21 @@ class Contact(ORM_Object):
         cursor.execute("SELECT name FROM contact")
         return [x[0] for x in cursor.fetchall()]
 
+
+    @staticmethod
+    def get_filtered_names(state_dict):
+        """ Takes a dictionary escribing the current state of the notebook tabs
+            Uses that state to create a query and pulls the corresponding
+            contact names.
+            Returns: A list of contact names for the current company
+
+            """
+        print 'contact, get_filtered_names method'
+        cursor.execute("SELECT name FROM contact WHERE company = %s",
+                       state_dict['company'])
+        return [x[0] for x in cursor.fetchall()]
+        
+
     @staticmethod
     def delete_by_name(name):
         """ Takes a name string
@@ -317,12 +335,12 @@ class Project(ORM_Object):
         """
     # todo: fix order
     def __init__(self, 
-                 name =None, company_name =None, hourly_pay =None,
+                 name =None, company =None, hourly_pay =None,
                  quoted_hours =None, worked_hours =None, billed_hours =None,
                  total_invoiced =None, total_paid =None, money_owed =None,
-                 project_active =None, contact_name =None, notes =None):
+                 project_active =None, contact =None, notes =None):
         self.name = name
-        self.company_name = company_name
+        self.company = company
         self.hourly_pay = hourly_pay
         self.quoted_hours = quoted_hours
         self.worked_hours = worked_hours
@@ -331,8 +349,8 @@ class Project(ORM_Object):
         self.total_paid = total_paid
         self.money_owed = money_owed
         self.project_active = project_active
-        self.contact_name = contact_name
-        self.company_name = company_name
+        self.contact = contact
+        self.company = company
         self.notes = notes
 
     def write(self):
@@ -341,12 +359,12 @@ class Project(ORM_Object):
             
             """
         cursor.execute("REPLACE INTO project "\
-                       "(name, company_name, contact_name, hourly_pay, "\
+                       "(name, company, contact, hourly_pay, "\
                        "quoted_hours, worked_hours, billed_hours, "\
                        "total_invoiced, total_paid, money_owed, "\
                        "project_active, notes)"\
                        " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
-                        (self.name,self.company_name,self.contact_name,
+                        (self.name,self.company,self.contact,
                          self.hourly_pay, self.quoted_hours, self.worked_hours,
                          self.billed_hours,self.total_invoiced,
                          self.total_paid,self.money_owed, self.project_active,
@@ -367,7 +385,7 @@ class Project(ORM_Object):
         new_project_obj = Project()
         if record_dict:
             new_project_obj.name = record_dict['name']
-            new_project_obj.company_name = record_dict['company_name']
+            new_project_obj.company = record_dict['company']
             new_project_obj.hourly_pay = record_dict['hourly_pay']
             new_project_obj.quoted_hours = record_dict['quoted_hours']
             new_project_obj.worked_hours = record_dict['worked_hours']
@@ -376,7 +394,7 @@ class Project(ORM_Object):
             new_project_obj.total_paid = record_dict['total_paid']
             new_project_obj.money_owed = record_dict['money_owed']
             new_project_obj.project_active = record_dict['project_active']
-            new_project_obj.contact_name = record_dict['contact_name']
+            new_project_obj.contact = record_dict['contact']
             new_project_obj.notes = record_dict['notes']
         else:
             print 'there was an error'
@@ -426,12 +444,12 @@ class Session(ORM_Object):
     """ ORM Session class.  Interface for the "session" table of the database
         
         """
-    def __init__(self, sessionID=None, company_name =None, project_name =None,
+    def __init__(self, sessionID=None, company =None, project =None,
                  project_session_number=None, start_time =None, stop_time =None,
                  time =None, notes =None, git_commit =None):
         self.sessionID = sessionID
-        self.company_name = company_name
-        self.project_name = project_name
+        self.company = company
+        self.project = project
         self.project_session_number = project_session_number
         self.start_time = start_time
         self.stop_time = stop_time
@@ -449,11 +467,11 @@ class Session(ORM_Object):
         print 'sessionID', self.sessionID
         
         cursor.execute("REPLACE INTO session "\
-                       "(sessionID, company_name, project_name,"\
+                       "(sessionID, company, project,"\
                        "project_session_number, start_time, stop_time, time, "\
                        "notes, git_commit)"\
                        " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",\
-                        (self.sessionID, self.company_name, self.project_name,
+                        (self.sessionID, self.company, self.project,
                          self.project_session_number, self.start_time,
                          self.stop_time, self.time, self.notes,
                          self.git_commit))
@@ -472,8 +490,8 @@ class Session(ORM_Object):
         new_session_obj = Session()
         if record_dict:
             new_session_obj.sessionID = record_dict['sessionID']
-            new_session_obj.company_name = record_dict['company_name']
-            new_session_obj.project_name = record_dict['project_name']
+            new_session_obj.company = record_dict['company']
+            new_session_obj.project = record_dict['project']
             new_session_obj.project_session_number = record_dict[
                 'project_session_number']
             new_session_obj.start_time = record_dict['start_time']
@@ -500,12 +518,12 @@ class Session(ORM_Object):
 
 
     def make_sessionID(self):
-        """ Returns: a string in the form "project_name.4" where 4 would
+        """ Returns: a string in the form "project.4" where 4 would
                      designate the 4th project session
             
             """
         cursor.execute("SELECT MAX(project_session_number) FROM session WHERE "\
-                       "project_name=%s", (self.project_name))
+                       "project=%s", (self.project))
         current_max = cursor.fetchone()[0]
         max_number = 0 # namespace?
         if current_max is not None:
@@ -514,5 +532,5 @@ class Session(ORM_Object):
             max_number = 1
 
         self.project_session_number = max_number
-        return '.'.join([self.project_name, str(max_number)])
+        return '.'.join([self.project, str(max_number)])
 

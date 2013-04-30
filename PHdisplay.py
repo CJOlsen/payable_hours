@@ -16,16 +16,33 @@
 import wx
 import PHdbOperations as PHdb
 
-
 connection, cursor = PHdb.connectDB()
 
+class Observable(object):
+    """ An observer class to facilitate tab synchronization.  ie when a comapny
+        is active in the Company tab only projects and contacts from that
+        company will show in the other tabs (showall button is still there)
 
-class NotebookPanel(wx.Panel):
+        """
+    def __init__(self):
+        self.observers = []
+    def subscribe(self, observer):
+        self.observers.append(observer)
+    def inbox(self, event):
+        # each tab needs to handle the messages differently, so this must be
+        # implemented in the child class
+        return NotImplementedError
+    def fire(self, **kwargs):
+        for o in self.observers:
+            o.inbox(kwargs)
+
+class NotebookPanel(wx.Panel, Observable):
     """ This is the Class for notebook tabs.
 
         """
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
+        Observable.__init__(self)
         self.parent = parent
         self.buttons = {}
         self.current_orm_object = None
@@ -34,9 +51,12 @@ class NotebookPanel(wx.Panel):
         #self.colleagues = []
 
     def AddEntryFields(self):
-##        text = wx.StaticText(self.panel, label=self.fields[0])
-##        self.sizer.Add(text, pos=(0, 0), flag=wx.TOP|wx.LEFT|wx.BOTTOM, border=5)
+        """ Adds the entry fields and their labels based on the self.fields list
+            defined in the child class.
 
+            """
+        assert self.fields
+        
         self.labels = {}
         self.entry_fields = {}
         i = 0
@@ -148,9 +168,12 @@ class NotebookPanel(wx.Panel):
         self.Bind(wx.EVT_BUTTON, self.OnClear, id=2)
         self.Bind(wx.EVT_BUTTON, self.OnSelect, id=3)
         self.Bind(wx.EVT_BUTTON, self.OnDelete, id=4)
+        self.Bind(wx.EVT_BUTTON, self.OnShowAll, id=5)
 
         self.Bind(wx.EVT_LISTBOX, self.OnListboxSelected, id=26)
 
+    # Event Handling (button event methods are CapitalizedCamelCase)
+    
     def OnClear(self, event):
         """ Clears the text fields.
 
@@ -181,7 +204,7 @@ class NotebookPanel(wx.Panel):
 
             """
         # get a new ORM object from PHdb***.py by calling a @classmethod
-        name = self.listbox.GetString(self.current_selected)
+        self.current_name = name = self.listbox.GetString(self.current_selected)
         self.current_orm_object = self.current_orm_object.get_by_name(name)
 
         # step through the text boxes and update them
@@ -191,10 +214,15 @@ class NotebookPanel(wx.Panel):
                 self.entry_fields[field].SetValue(str(new_value))
             else:
                 self.entry_fields[field].SetValue('')
+
+        self.fire_message()
                 
     def OnDelete(self, event):
         name = self.listbox.GetString(self.current_selected)
         self.current_orm_object.delete_by_name(name)
+        self.update_listbox()
+
+    def OnShowAll(self, event):
         self.update_listbox()
 
     def OnListboxSelected(self, event):
@@ -203,6 +231,18 @@ class NotebookPanel(wx.Panel):
     def update_listbox(self):
         new_list = self.current_orm_object.get_all_names()
         self.listbox.Set(new_list)
+
+    def fire_message(self):
+        if self.list_type == 'companies':
+            self.fire(company=self.current_name)
+        elif self.list_type == 'contacts':
+            self.fire(contact=self.current_name)
+        elif self.list_type == 'projects':
+            self.fire(project=self.current_name)
+        else:
+            pass
+        
+        
         
 
 
@@ -216,6 +256,37 @@ class CompanyPanel(NotebookPanel):
         self.fields = ['name', 'address', 'city', 'state', 'phone', 'notes']
         self.BuildUI('companies')
 
+    def inbox(self, event):
+        for key in event.keys():
+            if key[0] == 'contact':
+                name = PHdb.Contact().get_by_name(event[key]).company
+                self.current_orm_object = self.current_orm_object.get_by_name(name)
+                # get company for the contact
+                pass
+            elif key[0] == 'project':
+                # get company for the project, if none just clear the fields
+                pass
+            elif key[0] == 'session':
+                # get company for the session, if none just clear the fields
+                pass
+            else:
+                pass
+        # update fields
+        
+        # get a new ORM object from PHdb***.py by calling a @classmethod
+        #self.current_name = name = self.listbox.GetString(self.current_selected)
+        #self.current_orm_object = self.current_orm_object.get_by_name(name)
+
+        # step through the text boxes and update them
+        for field in self.fields:
+            new_value = self.current_orm_object.__dict__[field]
+            if new_value is not None:
+                self.entry_fields[field].SetValue(str(new_value))
+            else:
+                self.entry_fields[field].SetValue('')
+            
+        
+
 
 class ContactPanel(NotebookPanel):
     """ The contact tab for the notebook.
@@ -225,7 +296,14 @@ class ContactPanel(NotebookPanel):
         NotebookPanel.__init__(self, parent= parent)
         self.current_orm_object = PHdb.Contact(None)
         self.fields = ['name', 'company', 'phone', 'email', 'notes']
+        self.current_state = {'company':None}
         self.BuildUI('contacts')
+        
+
+    def inbox(self, event):
+        print 'contact recieved event', event
+        filtered_list = self.current_orm_object.get_filtered_names(event)
+        self.listbox.Set(filtered_list)
 
 
 class ProjectPanel(NotebookPanel):
@@ -235,12 +313,20 @@ class ProjectPanel(NotebookPanel):
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
         self.current_orm_object = PHdb.Project(None)
-        self.fields = ['name', 'company_name', 'contact_name', 'hourly_pay',
+        self.fields = ['name', 'company', 'contact', 'hourly_pay',
                        'quoted_hours', 'worked_hours', 'billed_hours',
                        'total_invoiced', 'total_paid', 'money_owed',
                        'project_active', 'notes']
+        self.current_state = {'company':None, 'contact':None}
         self.BuildUI('projects')
 
+    def inbox(self, event):
+        ## cases:
+        ## *company selected
+        ## *contact selected
+        print 'project recieved event', event
+        for k in event:
+            print k,event[k]
 
 class SessionPanel(NotebookPanel):
     """ The session tab for the notebook.
@@ -249,10 +335,16 @@ class SessionPanel(NotebookPanel):
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
         self.current_orm_object = PHdb.Company(None)
-        self.fields = ['sessionID', 'company_name',  'project_name',
+        self.fields = ['sessionID', 'company',  'project',
                        'project_session_number', 'start_time', 'stop_time',
                        'time', 'notes', 'git_commit']
+        self.current_state = {'company':None, 'contact':None, 'project':None}
         self.BuildUI('sessions')
+
+    def inbox(self, event):
+        print 'session recieved event', event
+        for k in event:
+            print k,event[k]
 
         
         
@@ -264,11 +356,25 @@ class MainNotebook(wx.Notebook):
     def __init__(self, parent):
         wx.Notebook.__init__(self, parent=parent)
 
-        # add the 5 tabs
-        self.AddPage(CompanyPanel(self), "Company")
-        self.AddPage(ContactPanel(self), "Contact")
-        self.AddPage(ProjectPanel(self), "Project")
-        self.AddPage(SessionPanel(self), "Session")
+        # make the noteboox tabs
+        self.company_panel = CompanyPanel(self)
+        self.contact_panel = ContactPanel(self)
+        self.project_panel = ProjectPanel(self)
+        self.session_panel = SessionPanel(self)
+
+        # sign up for message passing
+        self.company_panel.subscribe(self.contact_panel)
+        self.company_panel.subscribe(self.project_panel)
+        self.company_panel.subscribe(self.session_panel)
+        self.contact_panel.subscribe(self.project_panel)
+        self.contact_panel.subscribe(self.session_panel)
+        self.project_panel.subscribe(self.session_panel)
+        
+        # add the notebook tabs
+        self.AddPage(self.company_panel, "Company")
+        self.AddPage(self.contact_panel, "Contact")
+        self.AddPage(self.project_panel, "Project")
+        self.AddPage(self.session_panel, "Session")
         #self.AddPage(MysqlPanel(self), "MySQL")
 
 
