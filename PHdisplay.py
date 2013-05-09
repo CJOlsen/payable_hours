@@ -26,7 +26,7 @@ class Observable(object):
         """
     def __init__(self):
         self.observers = []
-    def subscribe(self, observer):
+    def add_observer(self, observer):
         self.observers.append(observer)
     def inbox(self, event):
         # each tab needs to handle the messages differently, so this must be
@@ -188,7 +188,7 @@ class NotebookPanel(wx.Panel, Observable):
         """
 
             """
-        # still needs to be overridden for the session tab 
+        # this is overridden for the session tab 
         if len(self.entry_fields["name"].GetValue()) == 0:
             print 'Error, no name'
             return
@@ -257,20 +257,19 @@ class CompanyPanel(NotebookPanel):
         self.BuildUI('companies')
 
     def inbox(self, event):
-        for key in event.keys():
-            if key[0] == 'contact':
+        print 'company recieved message', event
+        for key in event.keys(): # this for loop is only 
+            if key == 'contact':
                 name = PHdb.Contact().get_by_name(event[key]).company
                 self.current_orm_object = self.current_orm_object.get_by_name(name)
-                # get company for the contact
-                pass
-            elif key[0] == 'project':
-                # get company for the project, if none just clear the fields
-                pass
-            elif key[0] == 'session':
-                # get company for the session, if none just clear the fields
-                pass
+            elif key == 'project':
+                name = PHdb.Project().get_by_name(event[key]).company
+                self.current_orm_object = self.current_orm_object.get_by_name(name)
+            elif key == 'session':
+                name = PHdb.Session().get_by_name(event[key]).company
+                self.current_orm_object = self.current_orm_object.get_by_name(name)
             else:
-                pass
+                return
         # update fields
         
         # get a new ORM object from PHdb***.py by calling a @classmethod
@@ -284,8 +283,6 @@ class CompanyPanel(NotebookPanel):
                 self.entry_fields[field].SetValue(str(new_value))
             else:
                 self.entry_fields[field].SetValue('')
-            
-        
 
 
 class ContactPanel(NotebookPanel):
@@ -303,7 +300,12 @@ class ContactPanel(NotebookPanel):
     def inbox(self, event):
         print 'contact recieved event', event
         filtered_list = self.current_orm_object.get_filtered_names(event)
-        self.listbox.Set(filtered_list)
+        if filtered_list is not False:
+            self.listbox.Set(filtered_list)
+        else:
+            ## this is a "graceful" failure mode where the fields are
+            ## cleared instead of synchronized with the tab change.
+            self.OnClear(None)
 
 
 class ProjectPanel(NotebookPanel):
@@ -332,9 +334,10 @@ class SessionPanel(NotebookPanel):
     """ The session tab for the notebook.
 
         """
+    ## Maybe add dropdowns for company and project?
     def __init__(self, parent):
         NotebookPanel.__init__(self, parent= parent)
-        self.current_orm_object = PHdb.Company(None)
+        self.current_orm_object = PHdb.Session(None)
         self.fields = ['sessionID', 'company',  'project',
                        'project_session_number', 'start_time', 'stop_time',
                        'time', 'notes', 'git_commit']
@@ -345,6 +348,24 @@ class SessionPanel(NotebookPanel):
         print 'session recieved event', event
         for k in event:
             print k,event[k]
+
+    def OnSave(self, event):
+        """
+
+            """
+        # this is overridden for the session tab 
+        if len(self.entry_fields["sessionID"].GetValue()) == 0:
+            print 'Error, no sessionID'
+            return
+        if len(self.entry_fields["project"].GetValue()) == 0:
+            print 'Error, no project'
+            return
+        for field in self.fields:
+            value = self.entry_fields[field].GetValue()
+            self.current_orm_object.set_attr(field, value)
+            
+        self.current_orm_object.write()
+        self.update_listbox()
 
         
         
@@ -363,12 +384,17 @@ class MainNotebook(wx.Notebook):
         self.session_panel = SessionPanel(self)
 
         # sign up for message passing
-        self.company_panel.subscribe(self.contact_panel)
-        self.company_panel.subscribe(self.project_panel)
-        self.company_panel.subscribe(self.session_panel)
-        self.contact_panel.subscribe(self.project_panel)
-        self.contact_panel.subscribe(self.session_panel)
-        self.project_panel.subscribe(self.session_panel)
+        self.company_panel.add_observer(self.contact_panel)
+        self.company_panel.add_observer(self.project_panel)
+        self.company_panel.add_observer(self.session_panel)
+
+        self.contact_panel.add_observer(self.company_panel)
+        self.contact_panel.add_observer(self.project_panel)
+        self.contact_panel.add_observer(self.session_panel)
+        
+        self.project_panel.add_observer(self.company_panel)
+        self.project_panel.add_observer(self.contact_panel)
+        self.project_panel.add_observer(self.session_panel)
         
         # add the notebook tabs
         self.AddPage(self.company_panel, "Company")

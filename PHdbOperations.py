@@ -234,6 +234,19 @@ class Company(ORM_Object):
             """
         company=Company()
         company.delete_by_name(name)
+
+    def get_contacts_for_company(name):
+        cursor.execute("SELECT name FROM contact WHERE company=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+        
+
+    def get_projects_for_company(name):
+        cursor.execute("SELECT name FROM project WHERE company=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
+    def get_sessions_for_company(name):
+        cursor.execute("SELECT sessionID FROM contact WHERE company=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
         
 
 class Contact(ORM_Object):
@@ -304,16 +317,23 @@ class Contact(ORM_Object):
 
     @staticmethod
     def get_filtered_names(state_dict):
-        """ Takes a dictionary escribing the current state of the notebook tabs
+        """ Takes a dictionary describing the current state of the notebook tabs
             Uses that state to create a query and pulls the corresponding
             contact names.
             Returns: A list of contact names for the current company
 
             """
         print 'contact, get_filtered_names method'
-        cursor.execute("SELECT name FROM contact WHERE company = %s",
-                       state_dict['company'])
-        return [x[0] for x in cursor.fetchall()]
+        if 'company' in state_dict.keys():
+            cursor.execute("SELECT name FROM contact WHERE company = %s",
+                           state_dict['company'])
+            return [x[0] for x in cursor.fetchall()]
+        if 'project' in state_dict.keys():
+            cursor.execute("SELECT contact FROM project WHERE name = %s",
+                           state_dict['project'])
+            return [x[0] for x in cursor.fetchall()]
+        else:
+            return False
         
 
     @staticmethod
@@ -327,6 +347,17 @@ class Contact(ORM_Object):
         cursor.execute("DELETE FROM contact WHERE name=%s", (name))
         connection.commit()
 
+    def get_company_for_contact(name):
+        cursor.execute("SELECT company FROM contact WHERE name=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
+    def get_projects_for_contact(name):
+        cursor.execute("SELECT name FROM projact WHERE contact=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
+    def get_sessions_for_contact(name):
+        cursor.execute("SELECT sessionID FROM session WHERE company=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
 
 
 class Project(ORM_Object):
@@ -439,6 +470,17 @@ class Project(ORM_Object):
         cursor.execute("DELETE FROM project WHERE name=%s", (name))
         connection.commit()
 
+    def get_company_for_project(name):
+        cursor.execute("SELECT company FROM project WHERE name=%s", (name))
+        return cursor.fetchone()
+
+    def get_contact_for_project(name):
+        cursor.execute("SELECT contact FROM project WHERE name=%s", (name))
+
+    def get_sessions_for_project(name):
+        cursor.execute("SELECT sessionID FROM session WHERE project=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
     
 class Session(ORM_Object):
     """ ORM Session class.  Interface for the "session" table of the database
@@ -506,6 +548,11 @@ class Session(ORM_Object):
         cursor = connection.cursor()
         return new_session_obj
 
+    @classmethod
+    def get_by_name(cls, name):
+        """ Just passes it along. """
+        return cls.get_session_by_sessionID(name)
+        
     
     @staticmethod
     def get_all_names():
@@ -533,4 +580,16 @@ class Session(ORM_Object):
 
         self.project_session_number = max_number
         return '.'.join([self.project, str(max_number)])
+
+    def get_company_for_session(name):
+        cursor.execute("SELECT company FROM session WHERE sessionID=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
+    def get_contact_for_session(name):
+        cursor.execute("SELECT contact FROM session WHERE sessionID=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
+
+    def get_project_for_session(name):
+        cursor.execute("SELECT project FROM session WHERE sessionID=%s" ,(name))
+        return [x[0] for x in cursor.fetchall()]
 
